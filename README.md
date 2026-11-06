@@ -1,1 +1,107 @@
-# Battle-
+# ⚔ 턴제 전투 아레나 (1차 구현 진행 중)
+
+관리자가 채팅으로 스토리를 진행하다가 원하는 순간에 적군을 등장시키고, 플레이어들이 4단계 턴제 규칙으로 함께 싸우는 실시간 멀티플레이어 웹사이트입니다.
+
+- 설계 문서: [`docs/DESIGN.md`](docs/DESIGN.md) (구조, DB, API, 전투 규칙)
+- 기술: Next.js 15 · TypeScript · Supabase (PostgreSQL, Auth, Realtime) · Vercel
+
+## 현재 진행 상황
+
+| 단계 | 상태 |
+|---|---|
+| 1. 기본 프로젝트 (Next.js, Supabase 연결, 기본 UI) | ✅ 완료 |
+| 2. 관리자 인증, 방 생성/코드/입장/인원 제한/참가자 관리 | ✅ 완료 |
+| 3~8단계 | ⏳ 예정 (화면에 "N단계에서 구현 예정"으로 표시됨) |
+
+---
+
+## 처음 설정하기 (사용자님이 직접 하는 작업)
+
+### ① Supabase 프로젝트 만들기
+1. https://supabase.com 접속 → 로그인 → **New project**
+2. 이름 아무거나, 데이터베이스 비밀번호 입력(따로 보관), Region은 **Northeast Asia (Seoul)** 추천 → Create
+
+### ② 익명 로그인 켜기 (필수)
+대시보드 왼쪽 **Authentication → Sign In / Providers** → **Allow anonymous sign-ins** 켜기 → Save
+
+> 게스트가 회원가입 없이 접속해도 브라우저마다 고유 ID가 생겨서, 새로고침해도 같은 캐릭터로 복구됩니다.
+
+### ③ 데이터베이스 만들기 (SQL 실행)
+왼쪽 **SQL Editor → New query** 에서 아래 파일 내용을 **순서대로** 하나씩 붙여넣고 **Run**:
+
+1. `supabase/migrations/001_schema.sql` — 테이블, 보안(RLS), 실시간 설정
+2. `supabase/migrations/002_room_functions.sql` — 방 생성/입장 등 서버 함수
+
+주의사항
+- 반드시 **001 → 002** 순서로 실행하세요.
+- 001은 **한 번만** 실행합니다. 두 번 실행하면 "already exists" 오류가 나는데, 이미 만들어졌다는 뜻이므로 무시해도 됩니다.
+- 002는 여러 번 실행해도 안전합니다.
+- `supabase/tests/` 폴더의 파일은 테스트 전용입니다. **Supabase에서 실행하지 마세요.**
+
+### ④ 환경 변수 설정
+프로젝트 폴더에서 `.env.example` 을 복사해서 `.env.local` 을 만들고 값을 채웁니다.
+
+```bash
+cp .env.example .env.local
+```
+
+| 변수 | 어디서 찾나요 |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → Data API → **Project URL** |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings → API Keys → **Publishable key** (예전 화면: `anon` `public`) |
+| `SUPABASE_SECRET_KEY` | Project Settings → API Keys → **Secret key** (예전 화면: `service_role`) ⚠ 절대 공유 금지 |
+| `ADMIN_CODE` | 직접 정하는 관리자 비밀 문구 (8자 이상 권장) |
+
+### ⑤ 실행
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+브라우저에서 http://localhost:3000 접속 → 화면 아래에 **✅ 서버 연결 정상**이 보이면 1단계 확인 끝입니다.
+❌ 가 보이면 그 줄에 적힌 안내대로 고치세요.
+
+---
+
+## 2단계 확인 방법
+
+### 자동 테스트 (가상 사용자 4명)
+`npm run dev` 를 켜 둔 상태에서 **다른 터미널**에서:
+
+```bash
+npm run test:stage2
+```
+
+`🎉 2단계 테스트 N개 모두 통과` 가 나오면 성공입니다. 입장, 인원 제한, 중복 닉네임, 강퇴, 보안(RLS), 실시간 알림을 실제 Supabase로 확인합니다. 테스트용 방은 자동으로 삭제됩니다.
+
+### 직접 여러 명으로 확인
+같은 브라우저는 같은 사용자로 인식되므로 **창 종류를 다르게** 여세요.
+
+1. 일반 창: http://localhost:3000/admin → 관리자 코드 입력 → 전투방 생성 → 코드 복사
+2. 시크릿 창: http://localhost:3000 → 닉네임 + 코드 입력 → 입장
+3. 다른 브라우저(또는 휴대폰): 다른 닉네임으로 입장
+4. 관리자 화면 **2. 참가자 관리**에 새로고침 없이 참가자가 나타나는지 확인
+5. 강퇴 → 강퇴된 화면에 "강퇴되었습니다"가 표시되는지 확인
+6. 게스트 창 새로고침 → 같은 캐릭터로 돌아오는지 확인
+
+> 휴대폰으로 테스트하려면 PC와 같은 와이파이에서 `http://PC의IP:3000` 으로 접속하세요. (익명 로그인은 IP당 시간당 30회로 제한되므로, 테스트를 아주 많이 반복하면 잠시 막힐 수 있습니다.)
+
+### DB 함수 단독 테스트 (선택, 개발자용)
+로컬 PostgreSQL이 있을 때만: `npm run test:db`
+
+---
+
+## 폴더 구조
+```
+supabase/migrations/   DB 마이그레이션 (번호 순서대로 실행)
+supabase/tests/        로컬 DB 테스트
+scripts/               실제 서버 대상 자동 테스트
+src/app/               화면과 API (api/ 폴더 = 서버)
+src/lib/               서버·브라우저 공통 코드
+src/components/        UI 조각
+docs/DESIGN.md         설계 문서
+```
