@@ -2,7 +2,7 @@
 // 4단계 전투 화면 조각: 진행 상태/타이머, 행동 선택, 제출 현황, 선언된 공격, 전투 로그, 결과, 관리자 진행 제어
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/apiClient";
-import type { ActionType, BattleLog, FullPlayer, PublicPlayer, RoomState } from "@/lib/types";
+import type { ActionType, FullPlayer, PublicPlayer, RoomState } from "@/lib/types";
 import { ACTION_LABEL, ITEM_TYPE_LABEL, phaseName, PLAYER_STATUS_LABEL, RESULT_LABEL } from "@/lib/types";
 import { Card, ErrorBox, formatTime, HpBar } from "@/components/ui";
 
@@ -164,6 +164,16 @@ export function IncomingAttacks({ state }: { state: RoomState }) {
   );
 }
 
+/** 지금 내가 행동을 제출해야 하는 상황인지 (채팅 탭에도 행동 패널을 띄우기 위해 사용) */
+export function needsMyAction(state: RoomState, remaining: number | null) {
+  const me = state.me?.player;
+  return Boolean(
+    state.viewer === "guest" && me && me.status === "alive" && !state.myAction &&
+      state.room.status === "in_progress" && state.phase?.status === "open" &&
+      state.phase.acting_side === "players" && remaining !== 0,
+  );
+}
+
 // ---------------------------------------------------------------------
 // 행동 선택 / 제출
 // ---------------------------------------------------------------------
@@ -291,35 +301,6 @@ export function ActionPanel({ state, remaining, onDone }: { state: RoomState; re
       )}
       {my && !canAct && state.myAction && <p className="small muted" style={{ marginTop: 4 }}>{disabledReason}</p>}
     </Card>
-  );
-}
-
-// ---------------------------------------------------------------------
-// 전투 로그 (간단 목록 — 5단계에서 사이클/교환 묶음 표시로 개선)
-// ---------------------------------------------------------------------
-export function LogList({ logs }: { logs: BattleLog[] }) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
-  useEffect(() => {
-    const el = boxRef.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [logs.length]);
-  return (
-    <div
-      className="scroll-box log-box"
-      ref={boxRef}
-      onScroll={(e) => {
-        const el = e.currentTarget;
-        stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      }}
-    >
-      {logs.length === 0 && <p className="muted">아직 전투 기록이 없습니다.</p>}
-      {logs.map((l) => (
-        <div key={l.id} className={`log log-${l.log_type}`}>
-          {l.log_type === "phase_started" ? <b>▸ {l.content}</b> : <><span className="time">{formatTime(l.created_at)}</span> {l.content}</>}
-        </div>
-      ))}
-    </div>
   );
 }
 

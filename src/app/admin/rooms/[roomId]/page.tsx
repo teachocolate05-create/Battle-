@@ -8,8 +8,10 @@ import { useRoomState } from "@/lib/useRoomState";
 import type { Member, RoomState } from "@/lib/types";
 import { MEMBER_STATUS_LABEL, PLAYER_STATUS_LABEL } from "@/lib/types";
 import { EnemiesPanel, FirstSidePanel, ItemsPanel, PlayerStatsPanel } from "@/components/admin/SetupPanels";
-import { AppearanceBanner, SystemEventList } from "@/components/BattleView";
-import { AdminControlPanel, LogList, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { AppearanceBanner } from "@/components/BattleView";
+import { AdminControlPanel, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { BattleLogView } from "@/components/BattleLogView";
+import { ChatPanel } from "@/components/ChatPanel";
 import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, HpBar, Placeholder, RealtimeDot, StatusBadge } from "@/components/ui";
 
 const MENUS = [
@@ -23,7 +25,7 @@ const MENUS = [
   { key: "logs", label: "8. 전투 로그", stage: 5 },
   { key: "archive", label: "9. 전투 기록 보관함", stage: 7 },
 ] as const;
-const IMPLEMENTED_STAGE = 4;
+const IMPLEMENTED_STAGE = 6;
 
 export default function AdminRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -84,11 +86,7 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
               {menu === "control" && <AdminControlPanel state={state} remaining={remaining} onChanged={refresh} />}
               {menu === "logs" && (
                 <Card title="전투 로그">
-                  <LogList logs={state.logs} />
-                  <h3 style={{ margin: "16px 0 8px" }}>시스템 이벤트</h3>
-                  <SystemEventList events={state.events} />
-                  <div style={{ height: 12 }} />
-                  <Placeholder stage={5}>사이클별, [턴 + 반응턴] 묶음으로 전투 결과를 보여줍니다.</Placeholder>
+                  <BattleLogView state={state} />
                 </Card>
               )}
               {menu === "archive" && (
@@ -97,6 +95,12 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
                 </Card>
               )}
             </div>
+            {/* 채팅은 어떤 메뉴를 보고 있어도 항상 옆(모바일은 아래)에 표시 → 스토리 진행 중 바로 적군 등장 가능 */}
+            <aside className="admin-chat">
+              <Card title="💬 채팅 · 스토리 진행">
+                <ChatPanel state={state} onSent={refresh} height={460} />
+              </Card>
+            </aside>
           </div>
         )}
         {!state && !error && <p className="muted">불러오는 중…</p>}

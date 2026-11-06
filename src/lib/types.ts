@@ -149,6 +149,21 @@ export interface BattleLog {
   created_at: string;
 }
 
+export interface ChatMessage {
+  id: number;
+  sender_role: "guest" | "admin";
+  nickname: string;
+  message: string;
+  created_at: string;
+  /** 내가 보낸 메시지인지 (보낸 사람 ID는 서버가 보내지 않음) */
+  is_mine: boolean;
+}
+
+export interface HistoryPage<T> {
+  items: T[];
+  has_more: boolean;
+}
+
 /** GET /api/rooms/[roomId]/state 응답 */
 export interface RoomState {
   viewer: "admin" | "guest";
@@ -174,6 +189,9 @@ export interface RoomState {
   /** 지금 반응해야 할, 선언된 적군 공격 */
   pendingAttacks: PendingAttack[];
   logs: BattleLog[];
+  /** 최근 채팅 (전투 데이터와 별도 테이블·별도 조회) */
+  chat: ChatMessage[];
+  chatHasMore: boolean;
 }
 
 export const ACTION_LABEL: Record<ActionType, string> = {

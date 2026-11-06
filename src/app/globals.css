@@ -260,3 +260,43 @@ input:disabled, select:disabled { opacity: 0.5; }
 .result-banner b { font-size: 1.4rem; }
 .result-victory { border-color: var(--accent); background: linear-gradient(180deg, #3a2f12, #1a160c); }
 .result-defeat { border-color: #6b2b30; background: linear-gradient(180deg, #2b1416, #160b0c); }
+
+/* ===== 5단계: 묶음 전투 로그 ===== */
+.log-view { max-height: 520px; gap: 8px; }
+.log-cycle { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--bg); }
+.log-cycle-title { font-weight: 800; color: var(--accent-2); cursor: pointer; padding: 4px 0; }
+details.log-cycle > summary { list-style: none; }
+details.log-cycle > summary::-webkit-details-marker { display: none; }
+details.log-cycle > summary::before { content: "▸ "; }
+details.log-cycle[open] > summary::before { content: "▾ "; }
+.exchange { margin: 6px 0 10px; padding: 8px; border-radius: 8px; background: #121722; border: 1px solid #222a3b; }
+.exchange-title { font-weight: 700; font-size: 0.88rem; color: #c9b27a; margin-bottom: 4px; }
+.phase-block { padding-left: 8px; border-left: 2px solid #2e3547; margin: 6px 0; }
+.phase-title { font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+.phase-title .time { font-weight: 400; font-size: 0.75rem; }
+
+/* ===== 6단계: 채팅 ===== */
+.chat-list { gap: 4px; }
+.chat-msg { font-size: 0.93rem; padding: 4px 6px; border-radius: 6px; word-break: break-word; white-space: pre-wrap; }
+.chat-msg .time { color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.chat-nick { color: #9fc4ff; }
+.chat-admin .chat-nick { color: var(--accent-2); }
+.chat-mine { background: #16202f; }
+.chat-input { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input input { flex: 1; min-width: 0; }
+.chat-readonly { margin-top: 10px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; text-align: center; }
+.unread {
+  display: inline-block; margin-left: 6px; min-width: 20px; padding: 0 6px; border-radius: 999px;
+  background: var(--danger); color: #fff; font-size: 12px; line-height: 20px;
+}
+
+/* 관리자: 메뉴 | 내용 | 채팅 (넓은 화면) — 좁으면 아래로 */
+@media (min-width: 1280px) {
+  .page:has(.admin-layout) { max-width: 1560px; }
+  .admin-layout { grid-template-columns: 210px minmax(0, 1fr) 380px; }
+  .admin-chat { position: sticky; top: 76px; align-self: start; }
+}
+@media (min-width: 900px) and (max-width: 1279px) {
+  .admin-chat { grid-column: 1 / -1; }
+}
+.chat-pending { opacity: 0.55; font-style: italic; }

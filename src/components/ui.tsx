@@ -74,8 +74,17 @@ export function CopyButton({ text, label = "복사" }: { text: string; label?: s
 }
 
 /** 탭: 모든 탭 내용을 계속 렌더링하고 보이기만 전환 → 탭을 바꿔도 상태(입력 중인 내용, 스크롤 등) 유지 */
-export function Tabs({ tabs }: { tabs: { key: string; label: ReactNode; content: ReactNode }[] }) {
-  const [active, setActive] = useState(tabs[0]?.key);
+export function Tabs({ tabs, active: activeProp, onChange }: {
+  tabs: { key: string; label: ReactNode; content: ReactNode }[];
+  active?: string;
+  onChange?: (key: string) => void;
+}) {
+  const [inner, setInner] = useState(tabs[0]?.key);
+  const active = activeProp ?? inner;
+  const setActive = (k: string) => {
+    setInner(k);
+    onChange?.(k);
+  };
   return (
     <div className="tabs">
       <div className="tab-bar" role="tablist">

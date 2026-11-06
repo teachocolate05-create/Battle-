@@ -7,15 +7,19 @@ import { api, errorMessage } from "@/lib/apiClient";
 import { useRoomState } from "@/lib/useRoomState";
 import type { FullPlayer, RoomState } from "@/lib/types";
 import { PLAYER_STATUS_LABEL } from "@/lib/types";
-import { Card, ErrorBox, HpBar, Placeholder, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
+import { Card, ErrorBox, HpBar, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
 import { AppearanceBanner, EnemyCards, MyInventory, SystemEventList } from "@/components/BattleView";
-import { ActionPanel, IncomingAttacks, LogList, PhaseHeader, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { ActionPanel, IncomingAttacks, needsMyAction, PhaseHeader, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { BattleLogView } from "@/components/BattleLogView";
+import { ChatPanel, useUnread } from "@/components/ChatPanel";
 
 export default function GuestRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const { state, error, realtime, clockOffset, refresh } = useRoomState(roomId);
   const remaining = useRemaining(state?.phase?.status === "open" ? state.phase.ends_at : null, clockOffset);
   useAutoTick(state, remaining, refresh);
+  const [tab, setTab] = useState("battle");
+  const unread = useUnread(state, tab === "chat");
 
   if (!state) {
     return (
@@ -58,20 +62,24 @@ export default function GuestRoomPage({ params }: { params: Promise<{ roomId: st
         <ResultBanner state={state} />
         <PhaseHeader state={state} remaining={remaining} />
         <Tabs
+          active={tab}
+          onChange={setTab}
           tabs={[
             { key: "battle", label: "⚔ 전투", content: <BattleTab state={state} remaining={remaining} onDone={refresh} /> },
             {
               key: "chat",
-              label: "💬 채팅",
+              label: <>💬 채팅{unread > 0 && <span className="unread">{unread > 99 ? "99+" : unread}</span>}</>,
               content: (
-                <Card title="채팅">
-                  <SystemEventList events={state.events} empty="아직 메시지가 없습니다." />
-                  <div style={{ marginTop: 12 }}>
-                    <Placeholder stage={6}>
-                      참가자·관리자 일반 채팅 입력은 6단계에서 추가됩니다. 지금은 적군 등장 같은 시스템 메시지만 표시됩니다.
-                    </Placeholder>
-                  </div>
-                </Card>
+                <div className="stack">
+                  {/* 채팅 중에도 행동 제출 가능 (같은 서버 API 사용) */}
+                  {needsMyAction(state, remaining) && <ActionPanel state={state} remaining={remaining} onDone={refresh} />}
+                  {state.myAction && state.room.status === "in_progress" && state.phase?.acting_side === "players" && (
+                    <div className="alert alert-ok small">✅ 이번 단계 행동 제출 완료 · 판정까지 대기 중</div>
+                  )}
+                  <Card title="채팅">
+                    <ChatPanel state={state} onSent={refresh} height={520} />
+                  </Card>
+                </div>
               ),
             },
           ]}
@@ -107,7 +115,7 @@ function BattleTab({ state, remaining, onDone }: { state: RoomState; remaining: 
         <EnemyCards enemies={state.enemies} />
         <PlayerList state={state} />
         <Card title="전투 로그">
-          <LogList logs={state.logs} />
+          <BattleLogView state={state} />
         </Card>
         <Card title="시스템 메시지">
           <SystemEventList events={state.events} />
