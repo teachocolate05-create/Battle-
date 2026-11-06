@@ -1,5 +1,8 @@
 # 배포 안내 (Vercel, HTTPS)
 
+> ✅ **현재 배포됨: https://battle-arena-eta.vercel.app** (Vercel 프로젝트 `battle-arena`, GitHub `main` 브랜치에 연결 → 새 코드가 main 에 합쳐지면 자동 재배포)
+> 아래 내용은 처음부터 다시 배포하거나 다른 계정에 배포할 때의 참고용입니다.
+
 이 문서를 위에서부터 순서대로 따라 하면 `https://○○○.vercel.app` 주소로 누구나 접속할 수 있게 됩니다.
 예상 소요 시간: 약 10~15분. 비용: Vercel Hobby(무료) 플랜으로 충분합니다.
 

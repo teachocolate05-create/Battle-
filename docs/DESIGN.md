@@ -277,4 +277,4 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | 5 | 제출 현황, 판정 후 공개, 사이클별/묶음 로그 | ✅ 완료 |
 | 6 | 실시간 채팅, 시스템 메시지, 탭 독립 | ✅ 완료 |
 | 7 | 자동 기록 저장, 보관함 | ✅ 완료 |
-| 8 | 테스트, Vercel 배포 | ✅ 배포 준비·테스트 완료 / Vercel 연결은 docs/DEPLOY.md |
+| 8 | 테스트, Vercel 배포 | ✅ 완료 — https://battle-arena-eta.vercel.app |
