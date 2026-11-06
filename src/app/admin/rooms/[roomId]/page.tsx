@@ -9,10 +9,10 @@ import type { Member, RoomState } from "@/lib/types";
 import { MEMBER_STATUS_LABEL, PLAYER_STATUS_LABEL } from "@/lib/types";
 import { EnemiesPanel, FirstSidePanel, ItemsPanel, PlayerStatsPanel } from "@/components/admin/SetupPanels";
 import { AppearanceBanner } from "@/components/BattleView";
-import { AdminControlPanel, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { AdminControlPanel, ArchiveStatus, useAutoTick, useRemaining } from "@/components/BattlePanels";
 import { BattleLogView } from "@/components/BattleLogView";
 import { ChatPanel } from "@/components/ChatPanel";
-import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, HpBar, Placeholder, RealtimeDot, StatusBadge } from "@/components/ui";
+import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, HpBar, RealtimeDot, StatusBadge } from "@/components/ui";
 
 const MENUS = [
   { key: "settings", label: "1. 전투방 설정", stage: 2 },
@@ -25,7 +25,7 @@ const MENUS = [
   { key: "logs", label: "8. 전투 로그", stage: 5 },
   { key: "archive", label: "9. 전투 기록 보관함", stage: 7 },
 ] as const;
-const IMPLEMENTED_STAGE = 6;
+const IMPLEMENTED_STAGE = 7;
 
 export default function AdminRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -91,7 +91,9 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
               )}
               {menu === "archive" && (
                 <Card title="전투 기록 보관함">
-                  <Placeholder stage={7}>전투 종료 시 자동 저장된 기록을 열람합니다.</Placeholder>
+                  <ArchiveStatus state={state} onChanged={refresh} />
+                  <p className="small muted" style={{ margin: "10px 0" }}>모든 전투방의 지난 기록은 보관함에서 볼 수 있습니다.</p>
+                  <Link className="btn btn-primary" href="/admin/archives">📜 보관함 열기</Link>
                 </Card>
               )}
             </div>

@@ -11,7 +11,8 @@
     "test:stage2": "node scripts/smoke-test-stage2.mjs",
     "test:stage3": "node scripts/smoke-test-stage3.mjs",
     "test:stage4": "node scripts/smoke-test-stage4.mjs",
-    "test:stage56": "node scripts/smoke-test-stage56.mjs"
+    "test:stage56": "node scripts/smoke-test-stage56.mjs",
+    "test:stage7": "node scripts/smoke-test-stage7.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

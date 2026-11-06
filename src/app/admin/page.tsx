@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api, errorMessage } from "@/lib/apiClient";
 import type { AdminRoomSummary, MeResponse } from "@/lib/types";
 import { TURN_DURATIONS } from "@/lib/types";
-import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, Placeholder, StatusBadge } from "@/components/ui";
+import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, StatusBadge } from "@/components/ui";
 
 export default function AdminPage() {
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -135,8 +135,11 @@ function AdminHome() {
             ))}
           </ul>
         </Card>
-        <Card title="전투 기록 보관함">
-          <Placeholder stage={7}>종료된 전투의 로그와 채팅 기록을 다시 볼 수 있는 메뉴입니다.</Placeholder>
+        <Card title="📜 전투 기록 보관함">
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            전투가 끝나면 자동으로 저장됩니다. 사이클별 전투 로그, 채팅 기록, 적군 등장 시점을 다시 볼 수 있습니다.
+          </p>
+          <Link className="btn btn-primary" href="/admin/archives">보관함 열기</Link>
         </Card>
       </div>
     </div>

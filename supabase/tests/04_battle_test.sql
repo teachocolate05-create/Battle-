@@ -172,7 +172,7 @@ select public.submit_action('00000000-0000-0000-0000-000000000041', (select room
 select public.submit_action('00000000-0000-0000-0000-000000000042', (select room_id from A),
   json_build_object('action_type','attack','target_id',pg_temp.eid('늑대'))::jsonb);
 select public.admin_resolve_now((select adm from A), (select room_id from A));
-select pg_temp.ok((select status = 'ended' and result = 'victory' and archive_status = 'pending' from public.rooms where id = (select room_id from A)),
+select pg_temp.ok((select status = 'ended' and result = 'victory' and archive_status in ('pending', 'saved') from public.rooms where id = (select room_id from A)),
   '모든 적군 등장 + 사망 → 승리, 기록 저장 대기');
 select pg_temp.ok((select count(*) = 1 from public.battle_logs where room_id = (select room_id from A) and log_type = 'action_invalid'
                      and content like '%이미 쓰러져 공격이 무효%'), '이미 쓰러진 대상에 대한 두 번째 공격은 무효 처리');

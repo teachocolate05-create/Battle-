@@ -52,7 +52,7 @@ battle-arena/
 │  │  ├─ 004_battle_engine.sql     (사이클/단계/판정/승패 + pg_cron 5초 예약)  [4단계]
 │  │  ├─ 005_room_state.sql        (방 상태를 한 번의 질의로 조립)       [4단계]
 │  │  ├─ 006_chat.sql              (채팅 전송/스팸 방지 + 기록 페이지 조회) [5·6단계]
-│  │  └─ 007_archive.sql           (자동 기록 저장)                    [7단계 예정]
+│  │  └─ 007_archive.sql           (자동 기록 저장 + 재시도 + 삭제 보호)   [7단계]
 │  └─ tests/                       ← 로컬 PostgreSQL로 함수 동작 검증용
 ├─ src/
 │  ├─ app/
@@ -197,6 +197,14 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 - 탭 독립: 상단 타이머/단계는 탭 바깥, 두 탭 모두 항상 렌더링(숨김만 전환). 채팅 탭에서도 행동 제출 패널 표시.
 - 관리자 화면은 어떤 메뉴에서도 채팅이 옆(넓은 화면) 또는 아래(좁은 화면)에 보임 → 스토리 진행 중 바로 적군 등장 가능.
 
+### 4-4-3. 전투 기록 저장 (7단계)
+- `end_battle`(승리·패배·전원 도주·강제 종료 공통) 마지막에 `try_save_archive` 자동 호출 → 관리자 조작 불필요.
+- 저장 내용: `battle_results.result_data`(요약: 방·참가자·적군·아이템), `battle_archives.archive_data`(요약 + 단계·전투 로그·시스템 이벤트·채팅 전체).
+- `room_id` UNIQUE + "이미 저장됨" 확인 → 중복 저장 없음.
+- 저장 오류는 하위 트랜잭션에서 잡아서 전투 종료는 유지, `rooms.archive_status = 'failed'` + `archive_error` 기록 → 관리자 [기록 저장 재시도].
+  `pending` 상태는 5초 예약 작업(battle_tick)이 다시 저장 시도.
+- 종료됐지만 아직 저장되지 않은 방은 삭제 불가 (기록 유실 방지). 저장된 기록은 방 삭제와 무관하게 유지.
+
 ### 4-5. 종료 조건 (매 판정 단계 후 확인)
 - 승리: 등록된 적군이 1명 이상이고, **모두 등장 + 모두 사망**.
 - 패배: 생존 플레이어 0명 (전원 도주이고 사망자가 없으면 결과는 `all_escaped`).
@@ -248,8 +256,8 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | POST | /api/rooms/[roomId]/actions | 게스트 | 행동 제출 | 44 ✅ |
 | POST | /api/rooms/[roomId]/chat | 참가자/관리자 | 채팅 전송 | 6 ✅ |
 | GET | /api/rooms/[roomId]/history?kind=chat\|logs&before= | 참가자/관리자 | 이전 채팅·로그 더 보기 | 5·6 ✅ |
-| GET | /api/archives, /api/archives/[id] | 관리자 | 기록 보관함 | 7 |
-| POST | /api/rooms/[roomId]/archive/retry | 관리자 | 기록 저장 재시도 | 7 |
+| GET | /api/archives, /api/archives/[id] | 관리자 | 기록 보관함 | 7 ✅ |
+| POST | /api/rooms/[roomId]/archive/retry | 관리자 | 기록 저장 재시도 | 7 ✅ |
 
 ---
 
@@ -263,5 +271,5 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | 4 | 4단계 사이클, 행동 제출, 서버 판정, 타이머, 승패 | ✅ 완료 |
 | 5 | 제출 현황, 판정 후 공개, 사이클별/묶음 로그 | ✅ 완료 |
 | 6 | 실시간 채팅, 시스템 메시지, 탭 독립 | ✅ 완료 |
-| 7 | 자동 기록 저장, 보관함 | ⏳ 예정 |
+| 7 | 자동 기록 저장, 보관함 | ✅ 완료 |
 | 8 | 테스트, Vercel 배포 | ⏳ 예정 |

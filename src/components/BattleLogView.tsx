@@ -80,12 +80,8 @@ export function useStickToBottom(dep: unknown) {
 }
 
 export function BattleLogView({ state }: { state: RoomState }) {
-  const first: Side | null = state.room.first_side;
   const { all, hasMore, loadMore, busy, error } = useOlder<BattleLog>(state.room.id, "logs", state.logs, state.logs.length >= 400);
-  const { prep, cycles } = useMemo(() => group(all), [all]);
-  const latestCycle = cycles.length ? cycles[cycles.length - 1].n : null;
   const { ref, onScroll } = useStickToBottom(all.length);
-
   return (
     <div className="scroll-box log-view" ref={ref} onScroll={onScroll}>
       {hasMore && (
@@ -94,7 +90,19 @@ export function BattleLogView({ state }: { state: RoomState }) {
         </button>
       )}
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
-      {all.length === 0 && <p className="muted">아직 전투 기록이 없습니다.</p>}
+      <LogTree logs={all} firstSide={state.room.first_side} />
+    </div>
+  );
+}
+
+/** 로그 묶음 표시 (실시간 화면과 전투 기록 보관함에서 공통 사용) */
+export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[]; firstSide: Side | null; openAll?: boolean }) {
+  const { prep, cycles } = useMemo(() => group(logs), [logs]);
+  const latestCycle = cycles.length ? cycles[cycles.length - 1].n : null;
+  const first = firstSide;
+  return (
+    <>
+      {logs.length === 0 && <p className="muted">아직 전투 기록이 없습니다.</p>}
 
       {prep.length > 0 && (
         <section className="log-cycle">
@@ -104,7 +112,7 @@ export function BattleLogView({ state }: { state: RoomState }) {
       )}
 
       {cycles.map((c) => (
-        <details key={c.n} className="log-cycle" open={c.n === latestCycle || undefined}>
+        <details key={c.n} className="log-cycle" open={openAll || c.n === latestCycle || undefined}>
           <summary className="log-cycle-title">
             사이클 {c.n} <span className="small muted">· 기록 {c.count}개</span>
           </summary>
@@ -122,7 +130,7 @@ export function BattleLogView({ state }: { state: RoomState }) {
                         {p.n}단계 · {phaseName(first, p.n)}
                         {p.startedAt && <span className="time"> {formatTime(p.startedAt)}</span>}
                       </div>
-                      {p.logs.length === 0 && <div className="log muted">(진행 중…)</div>}
+                      {p.logs.length === 0 && <div className="log muted">(기록 없음)</div>}
                       {p.logs.map((l) => <LogLine key={l.id} log={l} />)}
                     </div>
                   ) : null,
@@ -132,7 +140,7 @@ export function BattleLogView({ state }: { state: RoomState }) {
           })}
         </details>
       ))}
-    </div>
+    </>
   );
 }
 

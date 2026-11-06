@@ -300,3 +300,9 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
   .admin-chat { grid-column: 1 / -1; }
 }
 .chat-pending { opacity: 0.55; font-style: italic; }
+
+/* ===== 7단계: 기록 보관함 ===== */
+@media (min-width: 700px) { .archive-stats { grid-template-columns: repeat(3, 1fr); } }
+.result-badge-victory { color: var(--accent-2); border-color: var(--accent); }
+.result-badge-defeat { color: var(--danger); border-color: #6b2b30; }
+.result-badge-forced { color: var(--info); border-color: #2c4a66; }

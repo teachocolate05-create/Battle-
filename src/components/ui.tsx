@@ -131,3 +131,11 @@ export function formatTime(iso: string) {
   const d = new Date(iso);
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
 }
+
+/** 초 → "1시간 5분" / "3분 20초" / "45초" */
+export function formatSeconds(sec: number) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return h ? `${h}시간 ${m}분` : m ? `${m}분 ${s}초` : `${s}초`;
+}

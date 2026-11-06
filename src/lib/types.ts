@@ -267,3 +267,75 @@ export function enemyStateLabel(e: Pick<Enemy, "appearance_status" | "status">) 
   if (e.status === "dead") return "사망";
   return e.appearance_status === "appeared" ? "등장함" : "등록됨";
 }
+
+// ===== 7단계: 전투 기록 보관함 =====
+export interface ArchiveSummary {
+  id: string;
+  room_id: string;
+  room_name_snapshot: string;
+  started_at: string | null;
+  ended_at: string | null;
+  result: string;
+  first_side: Side | null;
+  created_at: string;
+  total_cycles: number;
+  duration_seconds: number;
+  player_count: number;
+}
+
+export interface ArchivePlayer {
+  nickname: string;
+  display_name: string;
+  member_status: string;
+  final_hp: number;
+  max_hp: number;
+  status: PlayerStatus;
+  damage_dealt: number;
+  damage_taken: number;
+  items_used: { item_name: string; item_type: ItemType; count: number }[];
+  items_left: { item_name: string; quantity: number }[];
+}
+
+export interface ArchiveEnemy {
+  name: string;
+  description: string;
+  appeared: boolean;
+  appeared_at: string | null;
+  appearance_order: number | null;
+  appearance_message: string;
+  final_hp: number;
+  max_hp: number;
+  dead: boolean;
+}
+
+export interface ArchiveData {
+  room: {
+    room_name: string;
+    description: string;
+    room_code: string;
+    first_side: Side | null;
+    turn_duration: number;
+    started_at: string | null;
+    ended_at: string | null;
+    duration_seconds: number;
+    result: string;
+    end_reason: string | null;
+    total_cycles: number;
+    total_phases: number;
+  };
+  players: ArchivePlayer[];
+  enemies: ArchiveEnemy[];
+  items: { name: string; description: string; item_type: ItemType; effect_value: number }[];
+  phases: { cycle_number: number; phase_number: number; started_at: string; resolved_at: string | null; status: string }[];
+  logs: BattleLog[];
+  events: BattleEvent[];
+  chat: Omit<ChatMessage, "is_mine">[];
+}
+
+export interface ArchiveDetail {
+  id: string;
+  room_name_snapshot: string;
+  result: string;
+  created_at: string;
+  archive_data: ArchiveData;
+}

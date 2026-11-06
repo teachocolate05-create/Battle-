@@ -420,9 +420,51 @@ export function AdminControlPanel({ state, remaining, onChanged }: { state: Room
               </li>
             ))}
           </ul>
-          <p className="small muted" style={{ marginTop: 8 }}>전투 기록 자동 저장은 7단계에서 구현됩니다.</p>
+          <div style={{ marginTop: 12 }}><ArchiveStatus state={state} onChanged={onChanged} /></div>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// 관리자: 전투 기록 저장 상태 표시 + 재시도
+// ---------------------------------------------------------------------
+export function ArchiveStatus({ state, onChanged }: { state: RoomState; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const { room } = state;
+  if (room.status !== "ended") {
+    return <p className="small muted">전투가 끝나면 기록이 자동으로 저장됩니다.</p>;
+  }
+  const retry = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/rooms/${room.id}/archive/retry`, { method: "POST" });
+      onChanged();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const label =
+    room.archive_status === "saved" ? { cls: "alert-ok", text: "✅ 전투 기록 저장 완료 — 보관함에서 볼 수 있습니다." }
+    : room.archive_status === "failed" ? { cls: "alert-error", text: "❌ 전투 기록 저장 실패" }
+    : { cls: "alert-info", text: "⏳ 전투 기록 저장 중…" };
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <div className={`alert ${label.cls}`}>
+        {label.text}
+        {room.archive_status === "failed" && <div className="small">기록은 지워지지 않았습니다. 아래 버튼으로 다시 저장하세요.</div>}
+      </div>
+      {room.archive_status !== "saved" && (
+        <button className="btn btn-primary" disabled={busy} onClick={retry}>
+          {busy ? "저장 중…" : "🔁 기록 저장 재시도"}
+        </button>
+      )}
+      <ErrorBox>{error}</ErrorBox>
     </div>
   );
 }
