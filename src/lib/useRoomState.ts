@@ -64,6 +64,7 @@ export function useRoomState(roomId: string) {
     let cancelled = false;
     const sb = supabaseBrowser();
     let channel: ReturnType<typeof sb.channel> | null = null;
+    const warmup: ReturnType<typeof setTimeout>[] = [];
 
     (async () => {
       await load();
@@ -80,6 +81,8 @@ export function useRoomState(roomId: string) {
           if (status === "SUBSCRIBED") {
             setRealtime("live");
             refresh(); // 재연결 직후 놓친 변경 반영
+            // 실시간 서버가 막 깨어난 직후 몇 초간은 변경 알림이 누락될 수 있어 두 번 더 확인
+            warmup.push(setTimeout(refresh, 3000), setTimeout(refresh, 8000));
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             setRealtime("offline");
           }
@@ -97,6 +100,7 @@ export function useRoomState(roomId: string) {
     return () => {
       cancelled = true;
       clearInterval(poll);
+      warmup.forEach(clearTimeout);
       if (timer.current) clearTimeout(timer.current);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", refresh);

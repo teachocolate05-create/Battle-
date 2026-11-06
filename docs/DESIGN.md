@@ -205,6 +205,11 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
   `pending` 상태는 5초 예약 작업(battle_tick)이 다시 저장 시도.
 - 종료됐지만 아직 저장되지 않은 방은 삭제 불가 (기록 유실 방지). 저장된 기록은 방 삭제와 무관하게 유지.
 
+### 4-4-4. 배포 (8단계)
+- `vercel.json`: 서버 함수 리전 `hnd1`(도쿄) — Supabase(ap-northeast-1, 도쿄)와 같은 지역이라 DB 왕복이 짧음.
+- `next.config.ts`: 보안 헤더(CSP: 자기 사이트 + Supabase 로만 통신, iframe 금지, MIME 추측 금지 등). CSP 는 운영 빌드에만 적용.
+- 실시간 연결 직후 3초·8초에 한 번 더 상태 확인 (실시간 서버가 막 깨어날 때의 알림 누락 대비). 기본 15초 주기 확인은 유지.
+
 ### 4-5. 종료 조건 (매 판정 단계 후 확인)
 - 승리: 등록된 적군이 1명 이상이고, **모두 등장 + 모두 사망**.
 - 패배: 생존 플레이어 0명 (전원 도주이고 사망자가 없으면 결과는 `all_escaped`).
@@ -272,4 +277,4 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | 5 | 제출 현황, 판정 후 공개, 사이클별/묶음 로그 | ✅ 완료 |
 | 6 | 실시간 채팅, 시스템 메시지, 탭 독립 | ✅ 완료 |
 | 7 | 자동 기록 저장, 보관함 | ✅ 완료 |
-| 8 | 테스트, Vercel 배포 | ⏳ 예정 |
+| 8 | 테스트, Vercel 배포 | ✅ 배포 준비·테스트 완료 / Vercel 연결은 docs/DEPLOY.md |

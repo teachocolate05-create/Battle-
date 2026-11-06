@@ -44,8 +44,8 @@ p { margin: 0.25rem 0; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .between { justify-content: space-between; }
-.grid-2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+.grid-2 { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
@@ -150,8 +150,8 @@ form.stack { gap: 12px; }
 .placeholder { border: 1px dashed var(--line); border-radius: 8px; padding: 16px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 
 /* ----- 관리자 화면: 사이드 메뉴 ----- */
-.admin-layout { display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 900px) { .admin-layout { grid-template-columns: 220px 1fr; } }
+.admin-layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .admin-layout { grid-template-columns: 220px minmax(0, 1fr); } }
 .side-menu { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
 @media (min-width: 900px) { .side-menu { flex-direction: column; overflow: visible; } }
 .side-menu button {
@@ -306,3 +306,7 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
 .result-badge-victory { color: var(--accent-2); border-color: var(--accent); }
 .result-badge-defeat { color: var(--danger); border-color: #6b2b30; }
 .result-badge-forced { color: var(--info); border-color: #2c4a66; }
+
+/* 작은 화면: 그리드 안의 긴 내용이 화면 밖으로 밀어내지 않도록 */
+.card, .list-item, .stack { min-width: 0; }
+.list-item .grow { min-width: 0; overflow-wrap: anywhere; }

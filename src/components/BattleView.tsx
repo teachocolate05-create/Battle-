@@ -115,7 +115,7 @@ export function MyInventory({ state }: { state: RoomState }) {
           );
         })}
       </ul>
-      <p className="small muted" style={{ marginTop: 8 }}>아이템 사용은 전투 중 행동 선택에서 할 수 있습니다. (4단계)</p>
+      <p className="small muted" style={{ marginTop: 8 }}>아이템은 전투 중 [행동 선택 → 아이템 사용]으로 쓸 수 있습니다.</p>
     </Card>
   );
 }

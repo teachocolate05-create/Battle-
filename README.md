@@ -16,7 +16,8 @@
 | 5. 전투 로그 (사이클별, [턴 + 반응턴] 묶음, 이전 기록 더 보기) | ✅ 완료 |
 | 6. 실시간 채팅 (시스템 메시지, 스팸 방지, 읽기 전용, 탭 독립) | ✅ 완료 |
 | 7. 전투 기록 자동 저장 + 기록 보관함 (목록, 상세: 로그·채팅·참가자·적군 등장) | ✅ 완료 |
-| 8. 배포 및 최종 점검 | ⏳ 예정 |
+| 8. 배포 준비(보안 헤더, 도쿄 리전, 운영 빌드 전체 테스트, 기기별 화면 점검) | ✅ 완료 |
+| 8. Vercel 배포 | 👉 [`docs/DEPLOY.md`](docs/DEPLOY.md) 순서대로 진행 (사용자 계정 필요) |
 
 ---
 
@@ -151,6 +152,16 @@ npm run test:stage7
 > 참고: `npm run test:*` 자동 테스트는 이름이 `[자동테스트]`로 시작하는 전투 기록을 보관함에 남깁니다.
 > (보관함 기록 삭제 기능은 요청서 1차 범위에 없어서, 필요하면 SQL Editor에서
 > `delete from battle_results where id in (select battle_result_id from battle_archives where room_name_snapshot like '[자동테스트]%');` 로 지울 수 있습니다.)
+
+## 전체 테스트 / 배포
+
+```bash
+npm run test:all
+```
+
+2·3·4·5·6·7단계 자동 테스트를 순서대로 실행합니다 (4단계 3분 대기 포함, 약 6분). 빠르게: `npm run test:all -- http://localhost:3000 --skip-wait`
+
+배포는 [`docs/DEPLOY.md`](docs/DEPLOY.md) 를 따라 하세요.
 
 ### DB 함수 단독 테스트 (선택, 개발자용)
 로컬 PostgreSQL이 있을 때만: `npm run test:db`
