@@ -116,3 +116,9 @@ export function formatDuration(sec: number) {
 export function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" });
 }
+
+/** [21:03:12] 형식 시각 */
+export function formatTime(iso: string) {
+  const d = new Date(iso);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
+}

@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, errorMessage } from "@/lib/apiClient";
 import { useRoomState } from "@/lib/useRoomState";
-import type { FullPlayer, Member, RoomState } from "@/lib/types";
+import type { Member, RoomState } from "@/lib/types";
 import { MEMBER_STATUS_LABEL, PLAYER_STATUS_LABEL } from "@/lib/types";
+import { EnemiesPanel, FirstSidePanel, ItemsPanel, PlayerStatsPanel } from "@/components/admin/SetupPanels";
+import { AppearanceBanner, SystemEventList } from "@/components/BattleView";
 import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, HpBar, Placeholder, RealtimeDot, StatusBadge } from "@/components/ui";
 
 const MENUS = [
@@ -20,7 +22,7 @@ const MENUS = [
   { key: "logs", label: "8. 전투 로그", stage: 5 },
   { key: "archive", label: "9. 전투 기록 보관함", stage: 7 },
 ] as const;
-const IMPLEMENTED_STAGE = 2;
+const IMPLEMENTED_STAGE = 3;
 
 export default function AdminRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -59,6 +61,7 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
         {state && state.viewer !== "admin" && <ErrorBox>관리자 권한이 필요합니다.</ErrorBox>}
         {state && state.viewer === "admin" && (
           <div className="admin-layout">
+            <AppearanceBanner events={state.events} />
             <nav className="side-menu">
               {MENUS.map((m) => (
                 <button key={m.key} className={menu === m.key ? "on" : ""} onClick={() => setMenu(m.key)}>
@@ -71,27 +74,10 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
               {error && <ErrorBox>{error.message}</ErrorBox>}
               {menu === "settings" && <SettingsPanel state={state} />}
               {menu === "members" && <MembersPanel state={state} onChanged={refresh} />}
-              {menu === "players" && (
-                <Card title="플레이어 능력치 설정">
-                  <PlayerStatsPreview state={state} />
-                  <Placeholder stage={3}>최대/현재 HP, 공격력, 회피·도주 성공률 수정과 HP 직접 조정이 추가됩니다.</Placeholder>
-                </Card>
-              )}
-              {menu === "enemies" && (
-                <Card title="적군 관리">
-                  <Placeholder stage={3}>적군 최대 5명 등록, 능력치/등장 문구 설정, 원하는 시점에 등장 실행.</Placeholder>
-                </Card>
-              )}
-              {menu === "items" && (
-                <Card title="아이템 관리">
-                  <Placeholder stage={3}>HP 회복 / 적군 고정 피해 아이템 생성 및 플레이어 지급.</Placeholder>
-                </Card>
-              )}
-              {menu === "first" && (
-                <Card title="선공 측 설정">
-                  <Placeholder stage={3}>플레이어 측 선공 / 적군 측 선공 선택.</Placeholder>
-                </Card>
-              )}
+              {menu === "players" && <PlayerStatsPanel state={state} onChanged={refresh} />}
+              {menu === "enemies" && <EnemiesPanel state={state} onChanged={refresh} />}
+              {menu === "items" && <ItemsPanel state={state} onChanged={refresh} />}
+              {menu === "first" && <FirstSidePanel state={state} onChanged={refresh} />}
               {menu === "control" && (
                 <Card title="전투 진행 제어">
                   <Placeholder stage={4}>전투 시작, 현재 사이클/단계/남은 시간, 제출 현황, 조기 판정, 강제 종료.</Placeholder>
@@ -99,6 +85,9 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
               )}
               {menu === "logs" && (
                 <Card title="전투 로그">
+                  <h3 style={{ marginBottom: 8 }}>시스템 이벤트</h3>
+                  <SystemEventList events={state.events} />
+                  <div style={{ height: 12 }} />
                   <Placeholder stage={5}>사이클별, [턴 + 반응턴] 묶음으로 전투 결과를 보여줍니다.</Placeholder>
                 </Card>
               )}
@@ -217,25 +206,3 @@ function MembersPanel({ state, onChanged }: { state: RoomState; onChanged: () =>
   );
 }
 
-function PlayerStatsPreview({ state }: { state: RoomState }) {
-  const activeIds = new Set(state.members.filter((m) => m.status === "active").map((m) => m.id));
-  const players = state.players.filter((p) => activeIds.has(p.member_id)) as FullPlayer[];
-  if (players.length === 0) return <p className="muted">참가자가 없습니다.</p>;
-  return (
-    <ul className="list" style={{ marginBottom: 12 }}>
-      {players.map((p) => (
-        <li key={p.id} className="list-item">
-          <div className="grow">
-            <b>{p.display_name}</b>
-            <div className="small muted">
-              공격력 {p.min_attack}~{p.max_attack} · 회피 {p.dodge_rate}% · 도주 {p.escape_rate}%
-            </div>
-          </div>
-          <div style={{ minWidth: 160 }}>
-            <HpBar current={p.current_hp} max={p.max_hp} compact />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}

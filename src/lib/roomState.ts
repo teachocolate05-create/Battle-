@@ -2,7 +2,7 @@
 import "server-only";
 import { supabaseAdmin } from "./supabase/admin";
 import { ApiError, toApiError } from "./api";
-import type { FullPlayer, Member, PublicPlayer, Room, RoomState } from "./types";
+import type { BattleEvent, Enemy, FullPlayer, InventoryEntry, Item, Member, PublicPlayer, Room, RoomState } from "./types";
 
 const ROOM_COLUMNS =
   "id, room_code, room_name, description, has_password, status, max_players, turn_duration, first_side, " +
@@ -53,6 +53,39 @@ export async function buildRoomState(roomId: string, userId: string, admin: bool
       return { id, member_id, display_name, max_hp, current_hp, status } as PublicPlayer;
     });
 
+  // 적군: 게스트에게는 등장한 적군만 (RLS와 같은 규칙을 서버에서도 적용)
+  let enemyQuery = db
+    .from("enemies")
+    .select(
+      "id, name, description, max_hp, current_hp, min_attack, max_attack, dodge_rate, defense, target_type, " +
+        "target_player_id, appearance_message, appearance_status, appearance_order, appeared_at, status, created_at",
+    )
+    .eq("room_id", roomId)
+    .order("created_at");
+  if (!admin) enemyQuery = enemyQuery.eq("appearance_status", "appeared");
+
+  // 인벤토리: 게스트는 본인 것만
+  let invQuery = db.from("player_inventory").select("player_id, item_id, quantity").eq("room_id", roomId).gt("quantity", 0);
+  if (!admin) invQuery = invQuery.eq("player_id", myPlayer?.id ?? "00000000-0000-0000-0000-000000000000");
+
+  const [enemiesRes, itemsRes, invRes, eventsRes] = await Promise.all([
+    enemyQuery,
+    db.from("items").select("id, name, description, item_type, effect_value").eq("room_id", roomId).order("created_at"),
+    invQuery,
+    db
+      .from("battle_events")
+      .select("id, enemy_id, event_type, event_message, event_data, created_at")
+      .eq("room_id", roomId)
+      .order("id", { ascending: false })
+      .limit(200),
+  ]);
+  for (const r of [enemiesRes, itemsRes, invRes, eventsRes]) if (r.error) throw toApiError(r.error);
+
+  // 게스트에게는 적군의 '특정 대상' 설정과 등장 문구 원본을 숨김 (전략 정보)
+  const enemies = ((enemiesRes.data ?? []) as unknown as Enemy[]).map((e) =>
+    admin ? e : { ...e, target_player_id: null, appearance_message: "" },
+  );
+
   return {
     viewer: admin ? "admin" : "guest",
     serverNow: new Date().toISOString(),
@@ -60,5 +93,9 @@ export async function buildRoomState(roomId: string, userId: string, admin: bool
     members: visibleMembers,
     players: visiblePlayers,
     me: mine ? { member: strip(mine), player: myPlayer ?? null } : null,
+    enemies,
+    items: (itemsRes.data ?? []) as Item[],
+    inventory: (invRes.data ?? []) as InventoryEntry[],
+    events: ((eventsRes.data ?? []) as BattleEvent[]).reverse(),
   };
 }

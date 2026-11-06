@@ -166,3 +166,57 @@ form.stack { gap: 12px; }
 @media (min-width: 700px) { .battle-header { grid-template-columns: repeat(4, 1fr); } }
 .battle-header .stat b { font-size: 1.15rem; }
 .timer b { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+
+/* ===== 3단계: 폼 / 적군 / 아이템 / 시스템 메시지 ===== */
+.form-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 700px) { .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.form-grid input, .form-grid select { width: 100%; }
+input:disabled, select:disabled { opacity: 0.5; }
+
+.choice {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); color: var(--text);
+}
+.choice input { min-height: auto; width: 18px; height: 18px; }
+.choice-on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+.enemy-state-registered { color: var(--muted); }
+.enemy-state-appeared { color: var(--warn); border-color: #6b4d24; }
+.enemy-state-dead { color: var(--danger); border-color: #6b2b30; }
+.enemy-admin.enemy-registered { border-style: dashed; }
+.enemy-admin.enemy-dead { opacity: 0.6; }
+
+.enemy-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .enemy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.enemy-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px;
+  background: linear-gradient(180deg, #2a1c1c 0%, #1a1416 100%); border: 1px solid #5a2e2e;
+}
+.enemy-card-dead { filter: grayscale(1); opacity: 0.55; }
+.enemy-name { font-size: 1.05rem; color: #ffd0c4; }
+
+.item-heal { color: var(--ok); border-color: #2a5a3d; }
+.item-damage { color: #ff9f7a; border-color: #6b3b2b; }
+
+.scroll-box { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.system-msg {
+  padding: 8px 10px; border-radius: 8px; background: #241c10; border: 1px solid #5c4520; color: #f7deaa;
+  font-size: 0.92rem;
+}
+.system-msg .time { color: #b89a62; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.sys-tag { font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 4px; background: var(--accent); color: #1b1408; }
+.system-enemy_appeared { background: linear-gradient(90deg, #3a1a14, #241c10); border-color: #8a3a28; color: #ffd6c2; }
+
+.appear-banner {
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.55); padding: 16px; animation: fade-in 0.25s ease; cursor: pointer;
+}
+.appear-inner {
+  max-width: 560px; width: 100%; text-align: center; padding: 24px 20px; border-radius: 14px;
+  background: linear-gradient(180deg, #3d1712, #1c0d0b); border: 2px solid #c0492f;
+  box-shadow: 0 0 40px rgba(224, 90, 90, 0.45); animation: pop-in 0.35s ease;
+}
+.appear-label { color: #ff8a6a; font-weight: 800; letter-spacing: 0.2em; font-size: 0.85rem; }
+.appear-inner p { font-size: 1.35rem; font-weight: 800; margin-top: 10px; color: #fff1ea; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }

@@ -62,3 +62,10 @@ export function int(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
   return Number.isInteger(n) ? n : null;
 }
+
+/** 요청 본문이 JSON 객체인지 확인 (DB 함수에 jsonb 로 전달) */
+export async function readObject(req: Request): Promise<Record<string, unknown>> {
+  const body = await readJson<unknown>(req);
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new ApiError(400, "잘못된 요청 형식입니다.");
+  return body as Record<string, unknown>;
+}

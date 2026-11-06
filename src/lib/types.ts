@@ -52,6 +52,54 @@ export interface FullPlayer extends PublicPlayer {
   escape_rate: number;
 }
 
+export type EnemyTargetType = "all" | "random" | "specific";
+
+export interface Enemy {
+  id: string;
+  name: string;
+  description: string;
+  max_hp: number;
+  current_hp: number;
+  min_attack: number;
+  max_attack: number;
+  dodge_rate: number;
+  defense: number;
+  target_type: EnemyTargetType;
+  target_player_id: string | null;
+  appearance_message: string;
+  appearance_status: "registered" | "appeared";
+  appearance_order: number | null;
+  appeared_at: string | null;
+  status: "alive" | "dead";
+  created_at: string;
+}
+
+export type ItemType = "heal" | "damage";
+
+export interface Item {
+  id: string;
+  name: string;
+  description: string;
+  item_type: ItemType;
+  effect_value: number;
+}
+
+export interface InventoryEntry {
+  player_id: string;
+  item_id: string;
+  quantity: number;
+}
+
+/** 시스템 이벤트 (적군 등장, 전투 시작/종료 등) */
+export interface BattleEvent {
+  id: number;
+  enemy_id: string | null;
+  event_type: string;
+  event_message: string;
+  event_data: Record<string, unknown>;
+  created_at: string;
+}
+
 /** GET /api/rooms/[roomId]/state 응답 */
 export interface RoomState {
   viewer: "admin" | "guest";
@@ -62,6 +110,12 @@ export interface RoomState {
   /** 관리자: 전체 능력치 / 게스트: 본인만 전체, 나머지는 공개 정보 */
   players: (PublicPlayer | FullPlayer)[];
   me: { member: Member; player: FullPlayer | null } | null;
+  /** 관리자: 모든 적군 / 게스트: 등장한 적군만 (서버에서 걸러짐) */
+  enemies: Enemy[];
+  items: Item[];
+  /** 관리자: 모든 플레이어 / 게스트: 본인 것만 */
+  inventory: InventoryEntry[];
+  events: BattleEvent[];
 }
 
 export interface AdminRoomSummary {
@@ -101,3 +155,19 @@ export const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
 };
 
 export const TURN_DURATIONS = [180, 300, 420] as const;
+
+export const ENEMY_TARGET_LABEL: Record<EnemyTargetType, string> = {
+  all: "생존한 모든 플레이어",
+  random: "무작위 1명",
+  specific: "특정 플레이어",
+};
+
+export const ITEM_TYPE_LABEL: Record<ItemType, string> = {
+  heal: "HP 회복",
+  damage: "적군 고정 피해",
+};
+
+export function enemyStateLabel(e: Pick<Enemy, "appearance_status" | "status">) {
+  if (e.status === "dead") return "사망";
+  return e.appearance_status === "appeared" ? "등장함" : "등록됨";
+}

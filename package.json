@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:db": "bash supabase/tests/run_tests.sh",
-    "test:stage2": "node scripts/smoke-test-stage2.mjs"
+    "test:stage2": "node scripts/smoke-test-stage2.mjs",
+    "test:stage3": "node scripts/smoke-test-stage3.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

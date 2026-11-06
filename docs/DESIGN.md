@@ -48,7 +48,7 @@ battle-arena/
 │  ├─ migrations/                  ← Supabase SQL Editor에서 번호 순서대로 실행
 │  │  ├─ 001_schema.sql            (전체 테이블 + RLS + Realtime)      [2단계]
 │  │  ├─ 002_room_functions.sql    (방 생성/입장/퇴장/강퇴 함수)       [2단계]
-│  │  ├─ 003_setup_functions.sql   (능력치/적군/아이템/선공)           [3단계 예정]
+│  │  ├─ 003_setup_functions.sql   (능력치/적군/아이템/선공)           [3단계]
 │  │  ├─ 004_battle_engine.sql     (사이클/단계/판정/승패)             [4단계 예정]
 │  │  ├─ 005_chat.sql              (채팅 함수/스팸 방지)               [6단계 예정]
 │  │  ├─ 006_archive.sql           (자동 기록 저장)                    [7단계 예정]
@@ -186,7 +186,15 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 - 강제 종료: 관리자, 사유 기록 (`forced`).
 - 종료 시 남은 단계 중단, 새 적군 등장 불가, 채팅 읽기 전용, 기록 자동 저장.
 
-### 4-6. 방 운영 규칙 (1차)
+### 4-6. 전투 설정 규칙 (3단계)
+- 능력치: 대기 중에는 전부 수정 가능, 전투 중에는 **현재 HP만** (나머지는 2차 업데이트). HP 0 → 사망, 사망자 HP 회복 → 부활. 모든 HP 변경은 `battle_logs`에 기록.
+- 적군: 방당 최대 5명. 등록 ≠ 등장. 등장은 대기 중(스토리 진행)·전투 중 모두 가능, 종료 후 불가. 이미 등장한 적군은 삭제 불가, 사망한 적군은 수정 불가.
+- 등장 문구가 비어 있으면 "[이름]이/가 등장했다!" (받침에 맞는 조사 자동 선택).
+- 게스트에게는 등장한 적군의 이름·설명·HP만 공개 (공격 대상 설정 등 전략 정보는 숨김).
+- 아이템: HP 회복 / 적군 고정 피해 2종, 방당 30종, 지급 수량은 누적(최대 999). 삭제는 전투 시작 전에만.
+- 선공 측·턴 시간: 전투 시작 전에만 변경 가능.
+
+### 4-7. 방 운영 규칙 (1차)
 - 한 방에서 전투는 1회. (방 재사용/재시작은 2차 확장 가능)
 - 새 참가자 입장은 "대기 중"일 때만. 기존 참가자의 재접속은 언제나 가능.
 - 강퇴된 사용자는 같은 방에 다시 입장할 수 없음. 스스로 나간 사용자는 다시 입장하면 기존 캐릭터를 복구.
@@ -210,12 +218,12 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | GET | /api/rooms/[roomId]/state | 참가자/관리자 | 방 전체 상태 (권한별로 서버에서 필터링) | 2 ✅ (단계마다 확장) |
 | POST | /api/rooms/[roomId]/leave | 게스트 | 퇴장 | 2 ✅ |
 | POST | /api/rooms/[roomId]/members/[memberId]/kick | 관리자 | 강퇴 | 2 ✅ |
-| PATCH | /api/rooms/[roomId]/players/[playerId] | 관리자 | 능력치/HP 수정 | 3 |
-| POST/PATCH/DELETE | /api/rooms/[roomId]/enemies[...] | 관리자 | 적군 등록/수정/삭제 | 3 |
-| POST | /api/rooms/[roomId]/enemies/[enemyId]/appear | 관리자 | 적군 등장 실행 | 3 |
-| POST/DELETE | /api/rooms/[roomId]/items[...] | 관리자 | 아이템 생성/삭제 | 3 |
-| POST | /api/rooms/[roomId]/items/[itemId]/grant | 관리자 | 아이템 지급 | 3 |
-| PATCH | /api/rooms/[roomId]/settings | 관리자 | 선공 측, 턴 시간 등 | 3 |
+| PATCH | /api/rooms/[roomId]/players/[playerId] | 관리자 | 능력치/HP 수정 | 33 ✅ |
+| POST/PATCH/DELETE | /api/rooms/[roomId]/enemies[...] | 관리자 | 적군 등록/수정/삭제 | 33 ✅ |
+| POST | /api/rooms/[roomId]/enemies/[enemyId]/appear | 관리자 | 적군 등장 실행 | 33 ✅ |
+| POST/DELETE | /api/rooms/[roomId]/items[...] | 관리자 | 아이템 생성/삭제 | 33 ✅ |
+| POST | /api/rooms/[roomId]/items/[itemId]/grant | 관리자 | 아이템 지급 | 33 ✅ |
+| PATCH | /api/rooms/[roomId]/settings | 관리자 | 선공 측, 턴 시간 등 | 33 ✅ |
 | POST | /api/rooms/[roomId]/battle/start | 관리자 | 전투 시작 | 4 |
 | POST | /api/rooms/[roomId]/battle/resolve | 관리자 | 조기 판정 | 4 |
 | POST | /api/rooms/[roomId]/battle/end | 관리자 | 강제 종료 | 4 |
@@ -233,7 +241,7 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 |---|---|---|
 | 1 | Next.js + TypeScript + Supabase 연결 + 기본 UI | ✅ 완료 |
 | 2 | 관리자 인증, 방 생성/코드/입장/인원 제한/참가자 관리 | ✅ 완료 |
-| 3 | 능력치, 적군(최대 5), 등장 연출, 아이템, 선공 설정 | ⏳ 예정 |
+| 3 | 능력치, 적군(최대 5), 등장 연출, 아이템, 선공 설정 | ✅ 완료 |
 | 4 | 4단계 사이클, 행동 제출, 서버 판정, 타이머, 승패 | ⏳ 예정 |
 | 5 | 제출 현황, 판정 후 공개, 사이클별/묶음 로그 | ⏳ 예정 |
 | 6 | 실시간 채팅, 시스템 메시지, 탭 독립 | ⏳ 예정 |
