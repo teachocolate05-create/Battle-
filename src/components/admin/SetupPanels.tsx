@@ -285,9 +285,14 @@ function EnemyAdminCard({ enemy, state, onChanged }: { enemy: Enemy; state: Room
   );
 }
 
+/** 마지막 글자에 받침이 있는지 (영문·숫자는 한국어 읽기 기준: L/M/N/R, 0/1/3/6/7/8) */
 function hasBatchim(word: string) {
-  const c = word.charCodeAt(word.length - 1);
-  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+  const ch = word.trim().slice(-1);
+  const c = ch.charCodeAt(0);
+  if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28 !== 0;
+  if (/[0-9]/.test(ch)) return "013678".includes(ch);
+  if (/[a-z]/i.test(ch)) return "lmnr".includes(ch.toLowerCase());
+  return false;
 }
 
 function EnemyEditor({ state, enemy, onCancel, onSaved }: {

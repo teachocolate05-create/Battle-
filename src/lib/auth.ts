@@ -7,14 +7,19 @@ export interface RequestUser {
   id: string;
 }
 
-/** Authorization: Bearer <token> 을 Supabase Auth 서버에서 검증 */
+/**
+ * Authorization: Bearer <token> 검증.
+ * getClaims 는 서명을 공개키(JWKS, 캐시됨)로 서버에서 직접 확인하므로 매 요청마다 인증 서버를 부르지 않아 빠릅니다.
+ * (프로젝트가 구형 대칭키 방식이면 supabase-js 가 자동으로 인증 서버 확인으로 대체합니다)
+ */
 export async function getRequestUser(req: Request): Promise<RequestUser | null> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) return null;
-  const { data, error } = await supabaseAdmin().auth.getUser(token);
-  if (error || !data.user) return null;
-  return { id: data.user.id };
+  const { data, error } = await supabaseAdmin().auth.getClaims(token);
+  const sub = data?.claims?.sub;
+  if (error || !sub || data?.claims?.role !== "authenticated") return null;
+  return { id: sub };
 }
 
 export async function requireUser(req: Request): Promise<RequestUser> {

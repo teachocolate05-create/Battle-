@@ -220,3 +220,43 @@ input:disabled, select:disabled { opacity: 0.5; }
 .appear-inner p { font-size: 1.35rem; font-weight: 800; margin-top: 10px; color: #fff1ea; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop-in { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ===== 4단계: 전투 ===== */
+.timer-urgent b { color: var(--danger); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0.45; } }
+
+.action-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.action-btn { min-height: 56px; font-size: 16px; }
+.action-attack { border-color: #6b3b2b; }
+.action-dodge { border-color: #2c4a66; }
+.action-item { border-color: #2a5a3d; }
+.action-escape { border-color: #5a5a5a; }
+.action-on { outline: 2px solid var(--accent); background: #3a2f1a; color: var(--accent-2); }
+.target-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.target-btn { justify-content: space-between; min-height: 48px; }
+
+.sub-submitted { color: var(--ok); border-color: #2a5a3d; }
+.sub-pending { color: var(--warn); border-color: #6b4d24; }
+.sub-alive { color: var(--muted); }
+.sub-dead { color: var(--danger); border-color: #6b2b30; }
+.sub-escaped { color: var(--muted); }
+.incoming-me { border-color: #8a3a28; background: #2a1512; }
+
+.log-box { max-height: 420px; }
+.log { font-size: 0.9rem; padding: 3px 4px; border-bottom: 1px solid #1c2130; }
+.log .time { color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.log-phase_started { color: var(--accent-2); padding-top: 10px; border-bottom-color: var(--line); }
+.log-damage, .log-player_dead { color: #ffb3a3; }
+.log-enemy_dead, .log-escape_success, .log-dodge_success, .log-item_heal { color: #b9f0cd; }
+.log-enemy_appeared, .log-battle_started, .log-battle_ended { color: #f7deaa; font-weight: 700; }
+.log-enemy_declare { color: #ffcf8a; }
+.log-admin_hp, .log-early_resolve, .log-item_granted { color: var(--info); }
+.log-no_action, .log-action_invalid, .log-attack_cancelled, .log-enemy_idle { color: var(--muted); }
+
+.result-banner {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px; border-radius: 12px;
+  text-align: center; border: 2px solid var(--line); background: var(--panel); margin-top: 8px;
+}
+.result-banner b { font-size: 1.4rem; }
+.result-victory { border-color: var(--accent); background: linear-gradient(180deg, #3a2f12, #1a160c); }
+.result-defeat { border-color: #6b2b30; background: linear-gradient(180deg, #2b1416, #160b0c); }

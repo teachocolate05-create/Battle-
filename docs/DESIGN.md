@@ -49,10 +49,10 @@ battle-arena/
 │  │  ├─ 001_schema.sql            (전체 테이블 + RLS + Realtime)      [2단계]
 │  │  ├─ 002_room_functions.sql    (방 생성/입장/퇴장/강퇴 함수)       [2단계]
 │  │  ├─ 003_setup_functions.sql   (능력치/적군/아이템/선공)           [3단계]
-│  │  ├─ 004_battle_engine.sql     (사이클/단계/판정/승패)             [4단계 예정]
-│  │  ├─ 005_chat.sql              (채팅 함수/스팸 방지)               [6단계 예정]
-│  │  ├─ 006_archive.sql           (자동 기록 저장)                    [7단계 예정]
-│  │  └─ 007_cron.sql              (pg_cron 자동 판정 예약)            [4단계 예정]
+│  │  ├─ 004_battle_engine.sql     (사이클/단계/판정/승패 + pg_cron 5초 예약)  [4단계]
+│  │  ├─ 005_room_state.sql        (방 상태를 한 번의 질의로 조립)       [4단계]
+│  │  ├─ 006_chat.sql              (채팅 함수/스팸 방지)               [6단계 예정]
+│  │  └─ 007_archive.sql           (자동 기록 저장)                    [7단계 예정]
 │  └─ tests/                       ← 로컬 PostgreSQL로 함수 동작 검증용
 ├─ src/
 │  ├─ app/
@@ -180,6 +180,14 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 - 반응턴(플레이어 턴에 대한 반격): 즉시 피해 적용. 직전 플레이어 턴에서 회피를 선택한 대상은 회피 판정.
 - 턴(선공/후공): 공격 선언만 하고, 다음 플레이어 반응턴에 적용.
 
+### 4-4-1. 구현 세부 (4단계)
+- 진행 엔진 `progress_room`: 방 행을 `FOR UPDATE`로 잠그고 → 판정할 단계가 있으면 판정 → 승패 확인 → 다음 단계 열기. 적군 단계는 연속 자동 처리.
+  pg_cron(5초), 브라우저 타이머 0초 요청, 관리자 조기 판정이 동시에 와도 잠금 때문에 **한 번만** 판정됩니다.
+- 판정 여부는 항상 DB 시각(`now()`)과 `ends_at`으로 결정. 브라우저 시계는 표시용.
+- 행동 제출은 방 행을 `FOR SHARE`로 잠금 → 판정 도중에 제출이 끼어들 수 없음. `(phase_id, player_id)` UNIQUE로 최초 1회만 접수.
+- 상태 조회 `get_room_state`: 하나의 SQL 문으로 전체 상태를 조립 → 한 시점의 스냅샷, 왕복 1회.
+- 전투 중 강퇴된 플레이어는 참가자에서 제외(공격 대상 아님). 관리자 HP 조정·강퇴 후에도 승패를 즉시 확인.
+
 ### 4-5. 종료 조건 (매 판정 단계 후 확인)
 - 승리: 등록된 적군이 1명 이상이고, **모두 등장 + 모두 사망**.
 - 패배: 생존 플레이어 0명 (전원 도주이고 사망자가 없으면 결과는 `all_escaped`).
@@ -224,11 +232,11 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | POST/DELETE | /api/rooms/[roomId]/items[...] | 관리자 | 아이템 생성/삭제 | 33 ✅ |
 | POST | /api/rooms/[roomId]/items/[itemId]/grant | 관리자 | 아이템 지급 | 33 ✅ |
 | PATCH | /api/rooms/[roomId]/settings | 관리자 | 선공 측, 턴 시간 등 | 33 ✅ |
-| POST | /api/rooms/[roomId]/battle/start | 관리자 | 전투 시작 | 4 |
-| POST | /api/rooms/[roomId]/battle/resolve | 관리자 | 조기 판정 | 4 |
-| POST | /api/rooms/[roomId]/battle/end | 관리자 | 강제 종료 | 4 |
-| POST | /api/rooms/[roomId]/battle/tick | 참가자 | 시간 만료 확인 요청 (서버가 시간 검사, 보조 수단) | 4 |
-| POST | /api/rooms/[roomId]/actions | 게스트 | 행동 제출 | 4 |
+| POST | /api/rooms/[roomId]/battle/start | 관리자 | 전투 시작 | 44 ✅ |
+| POST | /api/rooms/[roomId]/battle/resolve | 관리자 | 조기 판정 | 44 ✅ |
+| POST | /api/rooms/[roomId]/battle/end | 관리자 | 강제 종료 | 44 ✅ |
+| POST | /api/rooms/[roomId]/battle/tick | 참가자 | 시간 만료 확인 요청 (서버가 시간 검사, 보조 수단) | 44 ✅ |
+| POST | /api/rooms/[roomId]/actions | 게스트 | 행동 제출 | 44 ✅ |
 | POST | /api/rooms/[roomId]/chat | 참가자/관리자 | 채팅 전송 | 6 |
 | GET | /api/archives, /api/archives/[id] | 관리자 | 기록 보관함 | 7 |
 | POST | /api/rooms/[roomId]/archive/retry | 관리자 | 기록 저장 재시도 | 7 |
@@ -242,7 +250,7 @@ battle_archives   id, room_id(UNIQUE, FK 없음), battle_result_id, room_name_sn
 | 1 | Next.js + TypeScript + Supabase 연결 + 기본 UI | ✅ 완료 |
 | 2 | 관리자 인증, 방 생성/코드/입장/인원 제한/참가자 관리 | ✅ 완료 |
 | 3 | 능력치, 적군(최대 5), 등장 연출, 아이템, 선공 설정 | ✅ 완료 |
-| 4 | 4단계 사이클, 행동 제출, 서버 판정, 타이머, 승패 | ⏳ 예정 |
+| 4 | 4단계 사이클, 행동 제출, 서버 판정, 타이머, 승패 | ✅ 완료 |
 | 5 | 제출 현황, 판정 후 공개, 사이클별/묶음 로그 | ⏳ 예정 |
 | 6 | 실시간 채팅, 시스템 메시지, 탭 독립 | ⏳ 예정 |
 | 7 | 자동 기록 저장, 보관함 | ⏳ 예정 |

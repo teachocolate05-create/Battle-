@@ -9,10 +9,13 @@ import type { FullPlayer, RoomState } from "@/lib/types";
 import { PLAYER_STATUS_LABEL } from "@/lib/types";
 import { Card, ErrorBox, HpBar, Placeholder, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
 import { AppearanceBanner, EnemyCards, MyInventory, SystemEventList } from "@/components/BattleView";
+import { ActionPanel, IncomingAttacks, LogList, PhaseHeader, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
 
 export default function GuestRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
-  const { state, error, realtime } = useRoomState(roomId);
+  const { state, error, realtime, clockOffset, refresh } = useRoomState(roomId);
+  const remaining = useRemaining(state?.phase?.status === "open" ? state.phase.ends_at : null, clockOffset);
+  useAutoTick(state, remaining, refresh);
 
   if (!state) {
     return (
@@ -52,10 +55,11 @@ export default function GuestRoomPage({ params }: { params: Promise<{ roomId: st
       <main className="page stack">
         {error && <ErrorBox>{error.message} (자동으로 다시 시도합니다)</ErrorBox>}
         <AppearanceBanner events={state.events} />
-        <BattleHeader state={state} />
+        <ResultBanner state={state} />
+        <PhaseHeader state={state} remaining={remaining} />
         <Tabs
           tabs={[
-            { key: "battle", label: "⚔ 전투", content: <BattleTab state={state} /> },
+            { key: "battle", label: "⚔ 전투", content: <BattleTab state={state} remaining={remaining} onDone={refresh} /> },
             {
               key: "chat",
               label: "💬 채팅",
@@ -78,25 +82,13 @@ export default function GuestRoomPage({ params }: { params: Promise<{ roomId: st
   );
 }
 
-function BattleHeader({ state }: { state: RoomState }) {
-  const alive = state.players.filter((p) => p.status === "alive").length;
-  const aliveEnemies = state.enemies.filter((e) => e.appearance_status === "appeared" && e.status === "alive").length;
-  const waiting = state.room.status === "waiting";
-  return (
-    <div className="battle-header">
-      <div className="stat"><span>사이클</span><b>{waiting ? "-" : state.room.current_cycle}</b></div>
-      <div className="stat"><span>현재 단계</span><b>{waiting ? "전투 대기 중" : "-"}</b></div>
-      <div className="stat timer"><span>남은 시간</span><b>--:--</b></div>
-      <div className="stat"><span>생존 플레이어 / 적군</span><b>{alive}명 / {aliveEnemies}</b></div>
-    </div>
-  );
-}
-
-function BattleTab({ state }: { state: RoomState }) {
+function BattleTab({ state, remaining, onDone }: { state: RoomState; remaining: number | null; onDone: () => void }) {
   const me = state.me?.player as FullPlayer | null | undefined;
   return (
     <div className="grid-2">
       <div className="stack">
+        <IncomingAttacks state={state} />
+        {state.viewer === "guest" && <ActionPanel state={state} remaining={remaining} onDone={onDone} />}
         {me && (
           <Card title={`내 캐릭터 · ${me.display_name}`}>
             <HpBar current={me.current_hp} max={me.max_hp} />
@@ -110,44 +102,15 @@ function BattleTab({ state }: { state: RoomState }) {
           </Card>
         )}
         <MyInventory state={state} />
-        <Card title="행동 선택">
-          <div className="grid-2" style={{ gap: 8 }}>
-            {["일반 공격", "회피", "아이템 사용", "도망"].map((a) => (
-              <button key={a} className="btn btn-block" disabled>
-                {a}
-              </button>
-            ))}
-          </div>
-          <p className="small muted" style={{ marginTop: 8 }}>
-            {state.room.status === "waiting" ? "전투가 시작되면 행동할 수 있습니다." : ""} (행동 제출은 4단계에서 구현 예정)
-          </p>
-        </Card>
       </div>
       <div className="stack">
         <EnemyCards enemies={state.enemies} />
-        <Card title={`플레이어 (${state.players.length}명)`}>
-          <ul className="list">
-            {state.players.map((p) => (
-              <li key={p.id} className="list-item">
-                <div className="grow">
-                  <div className="row">
-                    <b>{p.display_name}</b>
-                    {p.id === me?.id && <span className="badge">나</span>}
-                    <span className={`badge badge-${p.status}`}>{PLAYER_STATUS_LABEL[p.status]}</span>
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <HpBar current={p.current_hp} max={p.max_hp} compact />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <PlayerList state={state} />
+        <Card title="전투 로그">
+          <LogList logs={state.logs} />
         </Card>
         <Card title="시스템 메시지">
           <SystemEventList events={state.events} />
-        </Card>
-        <Card title="전투 로그">
-          <Placeholder stage={5}>사이클별 [턴 + 반응턴] 결과가 표시됩니다.</Placeholder>
         </Card>
       </div>
     </div>

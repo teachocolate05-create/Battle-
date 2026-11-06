@@ -100,6 +100,55 @@ export interface BattleEvent {
   created_at: string;
 }
 
+export type Side = "players" | "enemies";
+
+export interface BattlePhase {
+  id: string;
+  cycle_number: number;
+  phase_number: number;
+  phase_type: "turn" | "reaction";
+  acting_side: Side;
+  response_to_phase_id: string | null;
+  started_at: string;
+  ends_at: string | null;
+  resolved_at: string | null;
+  status: "open" | "resolved" | "aborted";
+}
+
+export type ActionType = "attack" | "dodge" | "item" | "escape";
+
+/** 본인이 제출한 행동 (다른 사람 것은 서버가 절대 보내지 않음) */
+export interface MyAction {
+  action_type: ActionType;
+  target_id: string | null;
+  item_id: string | null;
+  submitted_at: string;
+  status: "submitted" | "resolved" | "invalid";
+}
+
+/** 적군 턴에 선언되어 다음 플레이어 반응턴에 적용될 공격 (공개 정보) */
+export interface PendingAttack {
+  id: string;
+  enemy_id: string;
+  target_player_id: string;
+  attack_power: number;
+}
+
+export interface BattleLog {
+  id: number;
+  cycle_number: number | null;
+  phase_number: number | null;
+  phase_id: string | null;
+  actor_type: string | null;
+  actor_id: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  log_type: string;
+  content: string;
+  data: Record<string, unknown>;
+  created_at: string;
+}
+
 /** GET /api/rooms/[roomId]/state 응답 */
 export interface RoomState {
   viewer: "admin" | "guest";
@@ -116,6 +165,35 @@ export interface RoomState {
   /** 관리자: 모든 플레이어 / 게스트: 본인 것만 */
   inventory: InventoryEntry[];
   events: BattleEvent[];
+  /** 현재 단계 (전투 전이면 null) */
+  phase: BattlePhase | null;
+  /** 현재 단계에 행동을 제출한 플레이어 ID (행동 종류 없음) */
+  submissions: string[];
+  /** 현재 단계 내 행동 (게스트 본인만) */
+  myAction: MyAction | null;
+  /** 지금 반응해야 할, 선언된 적군 공격 */
+  pendingAttacks: PendingAttack[];
+  logs: BattleLog[];
+}
+
+export const ACTION_LABEL: Record<ActionType, string> = {
+  attack: "일반 공격",
+  dodge: "회피",
+  item: "아이템 사용",
+  escape: "도망",
+};
+
+export const RESULT_LABEL: Record<string, string> = {
+  victory: "🏆 승리",
+  defeat: "💀 패배",
+  all_escaped: "🏃 전원 도주",
+  forced: "⛔ 강제 종료",
+};
+
+export function phaseName(first: Side | null, n: number) {
+  const p = ["플레이어 선공턴", "적군 반응턴", "적군 후공턴", "플레이어 반응턴"];
+  const e = ["적군 선공턴", "플레이어 반응턴", "플레이어 후공턴", "적군 반응턴"];
+  return (first === "enemies" ? e : p)[n - 1] ?? "";
 }
 
 export interface AdminRoomSummary {

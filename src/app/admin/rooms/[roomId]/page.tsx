@@ -9,6 +9,7 @@ import type { Member, RoomState } from "@/lib/types";
 import { MEMBER_STATUS_LABEL, PLAYER_STATUS_LABEL } from "@/lib/types";
 import { EnemiesPanel, FirstSidePanel, ItemsPanel, PlayerStatsPanel } from "@/components/admin/SetupPanels";
 import { AppearanceBanner, SystemEventList } from "@/components/BattleView";
+import { AdminControlPanel, LogList, useAutoTick, useRemaining } from "@/components/BattlePanels";
 import { Card, CopyButton, ErrorBox, formatDateTime, formatDuration, HpBar, Placeholder, RealtimeDot, StatusBadge } from "@/components/ui";
 
 const MENUS = [
@@ -22,11 +23,13 @@ const MENUS = [
   { key: "logs", label: "8. 전투 로그", stage: 5 },
   { key: "archive", label: "9. 전투 기록 보관함", stage: 7 },
 ] as const;
-const IMPLEMENTED_STAGE = 3;
+const IMPLEMENTED_STAGE = 4;
 
 export default function AdminRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
-  const { state, error, realtime, refresh } = useRoomState(roomId);
+  const { state, error, realtime, refresh, clockOffset } = useRoomState(roomId);
+  const remaining = useRemaining(state?.phase?.status === "open" ? state.phase.ends_at : null, clockOffset);
+  useAutoTick(state, remaining, refresh);
   const [menu, setMenu] = useState<(typeof MENUS)[number]["key"]>("settings");
 
   return (
@@ -78,14 +81,11 @@ export default function AdminRoomPage({ params }: { params: Promise<{ roomId: st
               {menu === "enemies" && <EnemiesPanel state={state} onChanged={refresh} />}
               {menu === "items" && <ItemsPanel state={state} onChanged={refresh} />}
               {menu === "first" && <FirstSidePanel state={state} onChanged={refresh} />}
-              {menu === "control" && (
-                <Card title="전투 진행 제어">
-                  <Placeholder stage={4}>전투 시작, 현재 사이클/단계/남은 시간, 제출 현황, 조기 판정, 강제 종료.</Placeholder>
-                </Card>
-              )}
+              {menu === "control" && <AdminControlPanel state={state} remaining={remaining} onChanged={refresh} />}
               {menu === "logs" && (
                 <Card title="전투 로그">
-                  <h3 style={{ marginBottom: 8 }}>시스템 이벤트</h3>
+                  <LogList logs={state.logs} />
+                  <h3 style={{ margin: "16px 0 8px" }}>시스템 이벤트</h3>
                   <SystemEventList events={state.events} />
                   <div style={{ height: 12 }} />
                   <Placeholder stage={5}>사이클별, [턴 + 반응턴] 묶음으로 전투 결과를 보여줍니다.</Placeholder>
