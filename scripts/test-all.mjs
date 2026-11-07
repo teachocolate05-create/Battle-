@@ -1,5 +1,5 @@
 // =====================================================================
-// 전체 자동 테스트: 2 → 3 → 4 → 5·6 → 7단계를 순서대로 실행
+// 전체 자동 테스트: 1차(2~7단계) + v2(프로필·관리자 도구·결과 공개·채팅/기록)를 순서대로 실행
 //   로컬:   npm run dev   (다른 터미널)  →  npm run test:all
 //   배포본: npm run test:all -- https://내-사이트.vercel.app
 //   빠르게: npm run test:all -- http://localhost:3000 --skip-wait   (4단계 3분 대기 생략)
@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 const args = process.argv.slice(2);
 const base = args.find((a) => a.startsWith("http")) ?? "http://localhost:3000";
 const skipWait = args.includes("--skip-wait");
-const stages = ["stage2", "stage3", "stage4", "stage56", "stage7"];
+const stages = ["stage2", "stage3", "stage4", "stage56", "stage7", "v2-profile", "v2-admin", "v2-reveal", "v2-chat"];
 const results = [];
 for (const s of stages) {
   console.log(`\n━━━━━━━━ ${s} (${base}) ━━━━━━━━`);

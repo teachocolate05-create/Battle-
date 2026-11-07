@@ -7,6 +7,7 @@ import type { ArchiveDetail } from "@/lib/types";
 import { ITEM_TYPE_LABEL, PLAYER_STATUS_LABEL, RESULT_LABEL } from "@/lib/types";
 import { AdminGate } from "@/components/AdminGate";
 import { LogTree } from "@/components/BattleLogView";
+import { NameTag, ProfileView, useColorizer } from "@/components/Profile";
 import { Card, ErrorBox, formatDateTime, formatSeconds, formatTime, HpBar, Tabs } from "@/components/ui";
 
 export default function ArchiveDetailPage({ params }: { params: Promise<{ archiveId: string }> }) {
@@ -64,7 +65,7 @@ function Detail({ id }: { id: string }) {
             content: (
               <Card title="사이클별 전투 로그">
                 <div className="scroll-box log-view" style={{ maxHeight: 640 }}>
-                  <LogTree logs={d.logs} firstSide={r.first_side} />
+                  <ArchiveLogs rec={rec} />
                 </div>
               </Card>
             ),
@@ -94,9 +95,13 @@ function ArchiveChat({ rec }: { rec: ArchiveDetail }) {
         {rows.length === 0 && <p className="muted">채팅 기록이 없습니다.</p>}
         {rows.map((x) =>
           x.chat ? (
-            <div key={x.key} className={`chat-msg ${x.chat.sender_role === "admin" ? "chat-admin" : ""}`}>
+            <div key={x.key} className={`chat-msg ${x.chat.sender_role === "admin" ? "chat-kind-admin" : "chat-kind-player"}`}>
               <span className="time">[{formatTime(x.at)}]</span>{" "}
-              <b className="chat-nick">{x.chat.nickname}{x.chat.sender_role === "admin" ? " 👑" : ""}</b>: <span className="chat-text">{x.chat.message}</span>
+              {x.chat.sender_role === "admin"
+                ? <><NameTag name={x.chat.nickname} admin /> <span className="kind-tag tag-admin">진행</span></>
+                : <NameTag name={x.chat.nickname} color={x.chat.name_color} />}
+              : <span className={`chat-text ${x.chat.sender_role === "admin" ? "admin-body" : ""}`}>{x.chat.message}</span>
+              {x.chat.hidden && <span className="badge" style={{ marginLeft: 6 }}>관리자가 가린 메시지</span>}
             </div>
           ) : (
             <div key={x.key} className={`system-msg system-${x.ev!.event_type}`}>
@@ -111,14 +116,16 @@ function ArchiveChat({ rec }: { rec: ArchiveDetail }) {
 
 function ArchivePlayers({ rec }: { rec: ArchiveDetail }) {
   const players = rec.archive_data.players;
+  const history = rec.archive_data.profile_history ?? [];
   return (
+    <div className="stack">
     <Card title={`참가자 (${players.length})`}>
       <ul className="list">
         {players.map((p) => (
           <li key={p.nickname} className="list-item" style={{ display: "block" }}>
             <div className="row between">
               <div className="row">
-                <b>{p.display_name}</b>
+                <NameTag name={p.display_name} color={p.name_color} />
                 {p.display_name !== p.nickname && <span className="small muted">({p.nickname})</span>}
                 <span className={`badge badge-${p.status}`}>{PLAYER_STATUS_LABEL[p.status]}</span>
                 {p.member_status !== "active" && <span className="badge">{p.member_status === "kicked" ? "강퇴" : "퇴장"}</span>}
@@ -130,11 +137,40 @@ function ArchivePlayers({ rec }: { rec: ArchiveDetail }) {
               {p.items_used.length ? p.items_used.map((u) => `${u.item_name}(${ITEM_TYPE_LABEL[u.item_type]}) ×${u.count}`).join(", ") : "없음"}
               {p.items_left.length > 0 && <> · 남은 아이템: {p.items_left.map((i) => `${i.item_name} ×${i.quantity}`).join(", ")}</>}
             </div>
+            {rec.archive_data.version === 2 && (
+              <details className="small" style={{ marginTop: 6 }}>
+                <summary className="muted">프로필</summary>
+                <ProfileView
+                  player={{ id: "", member_id: "", display_name: p.display_name, max_hp: p.max_hp, current_hp: p.final_hp, status: p.status,
+                            name_color: p.name_color ?? "", bio: p.bio ?? "", appearance: p.appearance ?? "",
+                            profile_extra: p.profile_extra ?? {}, profile_locked_at: p.profile_locked_at ?? null }}
+                  fields={rec.archive_data.profile_fields ?? []}
+                />
+              </details>
+            )}
           </li>
         ))}
       </ul>
     </Card>
+    {history.length > 0 && (
+      <Card title="프로필 수정 내역">
+        <ul className="list">
+          {history.map((h, i) => (
+            <li key={i} className="list-item" style={{ display: "block" }}>
+              <div className="small muted">[{formatTime(h.created_at)}] {h.player_name} · {h.changed_by === "admin" ? "관리자 수정" : "본인 수정"}</div>
+              <div className="small" style={{ overflowWrap: "anywhere" }}>{Object.keys(h.changes).join(", ")}</div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    )}
+    </div>
   );
+}
+
+function ArchiveLogs({ rec }: { rec: ArchiveDetail }) {
+  const colorize = useColorizer(rec.archive_data.players.map((p) => ({ display_name: p.display_name, name_color: p.name_color ?? "" })).filter((p) => p.name_color));
+  return <LogTree logs={rec.archive_data.logs} firstSide={rec.archive_data.room.first_side} colorize={colorize} />;
 }
 
 function ArchiveEnemies({ rec }: { rec: ArchiveDetail }) {

@@ -353,3 +353,24 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
 .result-block .stage-title { color: var(--accent-2); }
 .reveal-wait { margin-top: 8px; padding: 8px; border-radius: 8px; text-align: center; color: var(--accent-2); border: 1px dashed var(--accent); animation: blink 1.2s steps(2) infinite; }
 .timer-reveal b { color: var(--accent-2); }
+
+/* ===== v2: 채팅 4종 구분 ===== */
+.chat-kind-player { border-left: 3px solid transparent; }
+.chat-kind-admin { border-left: 3px solid var(--accent); background: #1b1d24; }
+.admin-body { color: #a3a9b6; }                /* 관리자 대사·상황 설명: 본문만 회색 */
+.kind-tag { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; vertical-align: 1px; }
+.tag-admin { background: #3a3220; color: var(--accent-2); }
+.tag-declare { background: #22314a; color: #9fc4ff; }
+.tag-result { background: #3a2a14; color: var(--accent-2); }
+.tag-info { background: #2a2f3d; color: var(--muted); }
+.chat-log { font-size: 0.82rem; padding: 2px 6px; color: #c3c8d4; border-left: 3px solid #2e3547; }
+.chat-log .time { color: var(--muted); font-size: 0.72rem; }
+.chat-log-result { border-left-color: #6b5422; }
+.chat-log-declare { border-left-color: #2c4a66; }
+.chat-log-divider { text-align: center; font-size: 0.75rem; color: var(--muted); margin: 4px 0; }
+.chat-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.legend { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.legend-player { border-color: #2c4a66; color: #9fc4ff; }
+.legend-admin { border-color: var(--accent); color: #a3a9b6; }
+.legend-system { border-color: #5c4520; color: #f7deaa; }
+.legend-log { border-color: #2e3547; color: #c3c8d4; }

@@ -196,6 +196,8 @@ export interface ChatMessage {
   created_at: string;
   /** 내가 보낸 메시지인지 (보낸 사람 ID는 서버가 보내지 않음) */
   is_mine: boolean;
+  /** 보낸 참가자의 이름 색 (관리자 메시지는 null) */
+  name_color?: string | null;
   /** 관리자가 가린 메시지 */
   hidden?: boolean;
   /** 가린 메시지의 원문 (관리자에게만 전달) */
@@ -333,6 +335,12 @@ export interface ArchiveSummary {
 
 export interface ArchivePlayer {
   nickname: string;
+  /** v2 기록부터 */
+  name_color?: string;
+  bio?: string;
+  appearance?: string;
+  profile_extra?: Record<string, string>;
+  profile_locked_at?: string | null;
   display_name: string;
   member_status: string;
   final_hp: number;
@@ -378,6 +386,10 @@ export interface ArchiveData {
   logs: BattleLog[];
   events: BattleEvent[];
   chat: Omit<ChatMessage, "is_mine">[];
+  /** v2 기록부터 */
+  version?: number;
+  profile_fields?: ProfileField[];
+  profile_history?: { player_name: string; changed_by: "player" | "admin"; changes: Record<string, { before: unknown; after: unknown }>; created_at: string }[];
 }
 
 export interface ArchiveDetail {

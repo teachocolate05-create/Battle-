@@ -16,7 +16,8 @@
     "test:all": "node scripts/test-all.mjs",
     "test:v2-profile": "node scripts/smoke-test-v2-profile.mjs",
     "test:v2-admin": "node scripts/smoke-test-v2-admin.mjs",
-    "test:v2-reveal": "node scripts/smoke-test-v2-reveal.mjs"
+    "test:v2-reveal": "node scripts/smoke-test-v2-reveal.mjs",
+    "test:v2-chat": "node scripts/smoke-test-v2-chat.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
