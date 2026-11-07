@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/apiClient";
 import type { ActionType, FullPlayer, PublicPlayer, RoomState } from "@/lib/types";
-import { ACTION_LABEL, ITEM_TYPE_LABEL, phaseName, PLAYER_STATUS_LABEL, RESULT_LABEL } from "@/lib/types";
+import { ACTION_LABEL, ITEM_TYPE_LABEL, phaseName, RESULT_LABEL } from "@/lib/types";
 import { Card, ErrorBox, formatTime, HpBar } from "@/components/ui";
 import { NameTag, ProfileView } from "@/components/Profile";
 
@@ -304,129 +304,6 @@ export function ActionPanel({ state, remaining, onDone }: { state: RoomState; re
       )}
       {my && !canAct && state.myAction && <p className="small muted" style={{ marginTop: 4 }}>{disabledReason}</p>}
     </Card>
-  );
-}
-
-// ---------------------------------------------------------------------
-// 관리자: 7. 전투 진행 제어
-// ---------------------------------------------------------------------
-export function AdminControlPanel({ state, remaining, onChanged }: { state: RoomState; remaining: number | null; onChanged: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [reason, setReason] = useState("");
-  const { room, phase } = state;
-  const activeIds = new Set(state.members.filter((m) => m.status === "active").map((m) => m.id));
-  const participants = state.players.filter((p) => activeIds.has(p.member_id));
-  const alive = participants.filter((p) => p.status === "alive");
-
-  const call = async (path: string, body?: unknown, confirmMsg?: string) => {
-    if (confirmMsg && !confirm(confirmMsg)) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api(`/api/rooms/${room.id}/battle/${path}`, { method: "POST", body });
-      onChanged();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (room.status === "waiting") {
-    const checks = [
-      { ok: Boolean(room.first_side), text: room.first_side ? `선공 측: ${room.first_side === "players" ? "플레이어" : "적군"}` : "선공 측 미설정 (6번 메뉴)" },
-      { ok: alive.length > 0, text: `참가 플레이어 ${alive.length}명` },
-      { ok: state.enemies.length > 0, text: `등록된 적군 ${state.enemies.length}명 (등장 ${state.enemies.filter((e) => e.appearance_status === "appeared").length}명)` },
-    ];
-    return (
-      <Card title="전투 진행 제어">
-        <ul className="list">
-          {checks.map((c) => (
-            <li key={c.text} className="list-item"><span>{c.ok ? "✅" : "❌"} {c.text}</span></li>
-          ))}
-        </ul>
-        <p className="small muted" style={{ margin: "10px 0" }}>
-          적군은 전투 시작 후에도 원하는 시점에 등장시킬 수 있습니다. 단, 등장하지 않은 적군이 남아 있으면 승리로 처리되지 않습니다.
-        </p>
-        <ErrorBox>{error}</ErrorBox>
-        <button className="btn btn-primary btn-block" disabled={busy || !checks.every((c) => c.ok)}
-          onClick={() => call("start", undefined, "전투를 시작할까요? 시작 후에는 선공 측과 능력치(HP 제외)를 바꿀 수 없습니다.")}>
-          ⚔ 전투 시작
-        </button>
-      </Card>
-    );
-  }
-
-  const playersTurn = room.status === "in_progress" && phase?.status === "open" && phase.acting_side === "players";
-  const submitted = participants.filter((p) => state.submissions.includes(p.id)).length;
-
-  return (
-    <div className="stack">
-      <Card title="전투 진행 상태">
-        <PhaseHeader state={state} remaining={remaining} />
-        {phase && room.status === "in_progress" && (
-          <p className="small muted" style={{ marginTop: 10 }}>
-            현재 행동 측: <b>{phase.acting_side === "players" ? "플레이어" : "적군"}</b> ·{" "}
-            {phase.phase_type === "turn" ? "턴" : "반응턴"} · 단계 시작 {formatTime(phase.started_at)}
-            {phase.ends_at && ` · 마감 ${formatTime(phase.ends_at)}`}
-          </p>
-        )}
-        <ResultBanner state={state} />
-      </Card>
-
-      {room.status === "in_progress" && (
-        <Card title={`행동 제출 현황 ${playersTurn ? `(${submitted}/${alive.length})` : ""}`}>
-          <p className="small muted" style={{ marginBottom: 8 }}>관리자도 판정 전에는 각 플레이어가 어떤 행동을 골랐는지 볼 수 없습니다.</p>
-          <ul className="list">
-            {participants.map((p) => {
-              const s = submissionLabel(state, p);
-              return (
-                <li key={p.id} className="list-item">
-                  <span>{p.display_name} <span className="small muted">HP {p.current_hp}/{p.max_hp}</span></span>
-                  <span className={`badge sub-${s.cls}`}>{s.text}</span>
-                </li>
-              );
-            })}
-          </ul>
-          <ErrorBox>{error}</ErrorBox>
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" disabled={busy || !playersTurn}
-              onClick={() => call("resolve", undefined, "제한 시간이 남아 있지만 지금 판정할까요? 미제출 플레이어는 행동하지 않은 것으로 처리됩니다.")}>
-              ⏩ 조기 판정
-            </button>
-            {!playersTurn && <span className="small muted">조기 판정은 플레이어 단계에서만 가능합니다.</span>}
-          </div>
-        </Card>
-      )}
-
-      {room.status === "in_progress" && (
-        <Card title="전투 강제 종료">
-          <label>
-            종료 사유 (기록에 남습니다)
-            <input value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} placeholder="예: 시간 관계상 종료" />
-          </label>
-          <button className="btn btn-danger" style={{ marginTop: 10 }} disabled={busy}
-            onClick={() => call("end", { reason }, "전투를 강제로 종료할까요? 남은 단계는 진행되지 않습니다.")}>
-            ⛔ 강제 종료
-          </button>
-        </Card>
-      )}
-
-      {room.status === "ended" && (
-        <Card title="전투 결과">
-          <ul className="list">
-            {participants.map((p) => (
-              <li key={p.id} className="list-item">
-                <span>{p.display_name}</span>
-                <span className={`badge badge-${p.status}`}>{PLAYER_STATUS_LABEL[p.status]} · HP {p.current_hp}/{p.max_hp}</span>
-              </li>
-            ))}
-          </ul>
-          <div style={{ marginTop: 12 }}><ArchiveStatus state={state} onChanged={onChanged} /></div>
-        </Card>
-      )}
-    </div>
   );
 }
 

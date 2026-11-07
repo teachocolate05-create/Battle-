@@ -93,7 +93,8 @@ export interface Enemy {
   appearance_status: "registered" | "appeared";
   appearance_order: number | null;
   appeared_at: string | null;
-  status: "alive" | "dead";
+  /** alive: 전장에 있음(또는 등장 전) / dead: 쓰러짐 / withdrawn: 퇴장 */
+  status: "alive" | "dead" | "withdrawn";
   created_at: string;
 }
 
@@ -189,6 +190,10 @@ export interface ChatMessage {
   created_at: string;
   /** 내가 보낸 메시지인지 (보낸 사람 ID는 서버가 보내지 않음) */
   is_mine: boolean;
+  /** 관리자가 가린 메시지 */
+  hidden?: boolean;
+  /** 가린 메시지의 원문 (관리자에게만 전달) */
+  original?: string | null;
 }
 
 export interface HistoryPage<T> {
@@ -301,6 +306,7 @@ export const ITEM_TYPE_LABEL: Record<ItemType, string> = {
 
 export function enemyStateLabel(e: Pick<Enemy, "appearance_status" | "status">) {
   if (e.status === "dead") return "사망";
+  if (e.status === "withdrawn") return "퇴장";
   return e.appearance_status === "appeared" ? "등장함" : "등록됨";
 }
 

@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/lib/apiClient";
 import type { Enemy, EnemyTargetType, FullPlayer, Item, ItemType, RoomState } from "@/lib/types";
 import { ENEMY_TARGET_LABEL, enemyStateLabel, ITEM_TYPE_LABEL, PLAYER_STATUS_LABEL, TURN_DURATIONS } from "@/lib/types";
 import { Card, ErrorBox, formatDuration, formatTime, HpBar } from "@/components/ui";
+import { NameTag, ProfileEditor, ProfileHistoryList, ProfileView } from "@/components/Profile";
 
 /** 참가 중인 플레이어만 (퇴장/강퇴 제외) */
 function activePlayers(state: RoomState): FullPlayer[] {
@@ -234,18 +235,26 @@ function EnemyAdminCard({ enemy, state, onChanged }: { enemy: Enemy; state: Room
     if (!confirm(`'${enemy.name}'을(를) 지금 등장시킬까요?\n참가자 화면과 채팅에 등장 메시지가 표시되고, 바로 전투에 참여합니다.`)) return;
     void run(() => api(`/api/rooms/${state.room.id}/enemies/${enemy.id}/appear`, { method: "POST" }));
   };
+  const withdraw = () => {
+    if (!confirm(`'${enemy.name}'을(를) 전장에서 퇴장시킬까요?\n퇴장한 적군은 공격하지도 공격받지도 않으며, 나중에 다시 등장시킬 수 있습니다.`)) return;
+    void run(() => api(`/api/rooms/${state.room.id}/enemies/${enemy.id}/withdraw`, { method: "POST" }));
+  };
+  const reappear = () => {
+    if (!confirm(`'${enemy.name}'을(를) 다시 등장시킬까요?`)) return;
+    void run(() => api(`/api/rooms/${state.room.id}/enemies/${enemy.id}/appear`, { method: "POST" }));
+  };
   const remove = () => {
     if (!confirm(`'${enemy.name}'을(를) 삭제할까요?`)) return;
     void run(() => api(`/api/rooms/${state.room.id}/enemies/${enemy.id}`, { method: "DELETE" }));
   };
 
   return (
-    <section className={`card enemy-admin enemy-${enemy.status === "dead" ? "dead" : enemy.appearance_status}`}>
+    <section className={`card enemy-admin enemy-${enemy.status === "alive" ? enemy.appearance_status : enemy.status}`}>
       <div className="card-head">
         <div className="row">
           {enemy.appearance_order && <span className="badge">#{enemy.appearance_order}</span>}
           <h2>{enemy.name}</h2>
-          <span className={`badge enemy-state-${enemy.status === "dead" ? "dead" : enemy.appearance_status}`}>{label}</span>
+          <span className={`badge enemy-state-${enemy.status === "alive" ? enemy.appearance_status : enemy.status}`}>{label}</span>
         </div>
         <div className="card-actions">
           {enemy.appearance_status === "registered" && !ended && (
@@ -253,7 +262,13 @@ function EnemyAdminCard({ enemy, state, onChanged }: { enemy: Enemy; state: Room
               ⚡ 등장시키기
             </button>
           )}
-          {!ended && enemy.status !== "dead" && !editing && (
+          {enemy.appearance_status === "appeared" && enemy.status === "alive" && !ended && (
+            <button className="btn btn-small" disabled={busy} onClick={withdraw}>🚪 퇴장시키기</button>
+          )}
+          {enemy.status === "withdrawn" && !ended && (
+            <button className="btn btn-primary btn-small" disabled={busy} onClick={reappear}>⚡ 다시 등장</button>
+          )}
+          {!ended && enemy.status === "alive" && !editing && (
             <button className="btn btn-small" onClick={() => setEditing(true)}>수정</button>
           )}
           {enemy.appearance_status === "registered" && !ended && (
@@ -568,5 +583,120 @@ export function FirstSidePanel({ state, onChanged }: { state: RoomState; onChang
         )}
       </div>
     </Card>
+  );
+}
+
+// =====================================================================
+// 플레이어 관리 > 아이템 지급 (플레이어를 먼저 고르는 방식)
+// =====================================================================
+export function GrantPanel({ state, onChanged }: { state: RoomState; onChanged: () => void }) {
+  const players = activePlayers(state);
+  const [playerId, setPlayerId] = useState("");
+  const [itemId, setItemId] = useState("");
+  const [qty, setQty] = useState("1");
+  const [msg, setMsg] = useState("");
+  const { busy, error, run } = useAction(onChanged);
+  const ended = state.room.status === "ended";
+  const grant = async () => {
+    setMsg("");
+    const p = players.find((x) => x.id === playerId);
+    const it = state.items.find((x) => x.id === itemId);
+    if (await run(() => api(`/api/rooms/${state.room.id}/items/${itemId}/grant`, { method: "POST", body: { playerId, quantity: Number(qty) } }))) {
+      setMsg(`${p?.display_name}에게 ${it?.name} ${qty}개 지급 완료`);
+    }
+  };
+  return (
+    <div className="stack">
+      <Card title="아이템 지급">
+        {state.items.length === 0 ? (
+          <p className="muted">먼저 [적군 및 아이템 관리 → 아이템]에서 아이템을 만드세요.</p>
+        ) : (
+          <div className="form-grid">
+            <label>
+              플레이어
+              <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} disabled={ended}>
+                <option value="">선택하세요</option>
+                {players.map((p) => <option key={p.id} value={p.id}>{p.display_name}</option>)}
+              </select>
+            </label>
+            <label>
+              아이템
+              <select value={itemId} onChange={(e) => setItemId(e.target.value)} disabled={ended}>
+                <option value="">선택하세요</option>
+                {state.items.map((i) => <option key={i.id} value={i.id}>{i.name} ({ITEM_TYPE_LABEL[i.item_type]} {i.effect_value})</option>)}
+              </select>
+            </label>
+            <NumField label="수량" value={qty} onChange={setQty} min={1} max={99} disabled={ended} />
+            <label>
+              &nbsp;
+              <button className="btn btn-primary" disabled={busy || ended || !playerId || !itemId} onClick={grant}>지급</button>
+            </label>
+          </div>
+        )}
+        <ErrorBox>{error}</ErrorBox>
+        {msg && <div className="small" style={{ color: "var(--ok)", marginTop: 6 }}>{msg}</div>}
+      </Card>
+      <Card title="플레이어별 보유 아이템">
+        <ul className="list">
+          {players.map((p) => {
+            const owned = state.inventory.filter((inv) => inv.player_id === p.id);
+            return (
+              <li key={p.id} className="list-item">
+                <NameTag name={p.display_name} color={p.name_color} />
+                <span className="small">
+                  {owned.length === 0 ? <span className="muted">없음</span>
+                    : owned.map((inv) => `${state.items.find((i) => i.id === inv.item_id)?.name ?? "?"} ×${inv.quantity}`).join(", ")}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+// =====================================================================
+// 플레이어 관리 > 프로필 (관리자는 전투 중에도 수정 가능, 수정 내역 표시)
+// =====================================================================
+export function ProfilesPanel({ state, onChanged }: { state: RoomState; onChanged: () => void }) {
+  const players = activePlayers(state);
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="stack">
+      <Card title="참가자 프로필">
+        <p className="small muted" style={{ marginBottom: 10 }}>
+          {state.room.status === "waiting"
+            ? "참가자는 전투 시작 전까지 직접 프로필을 고칠 수 있습니다. 전투가 시작되면 확정되고, 이후에는 관리자만 수정할 수 있습니다."
+            : "프로필이 확정되었습니다. 필요하면 관리자가 수정할 수 있으며, 수정 내역이 기록됩니다."}
+        </p>
+        {players.length === 0 && <p className="muted">참가자가 없습니다.</p>}
+        <ul className="list">
+          {players.map((p) => (
+            <li key={p.id} className="list-item" style={{ display: "block" }}>
+              <div className="row between">
+                <div className="row">
+                  <NameTag name={p.display_name} color={p.name_color} />
+                  {p.profile_locked_at ? <span className="badge">🔒 확정</span> : <span className="badge">작성 중</span>}
+                </div>
+                {state.room.status !== "ended" && (
+                  <button className="btn btn-small" onClick={() => setOpen(open === p.id ? null : p.id)}>{open === p.id ? "닫기" : "수정"}</button>
+                )}
+              </div>
+              {open === p.id ? (
+                <div style={{ marginTop: 10 }}>
+                  <ProfileEditor state={state} player={p} mode="admin" onSaved={onChanged} onCancel={() => setOpen(null)} />
+                </div>
+              ) : (
+                <ProfileView player={p} fields={state.room.profile_fields ?? []} />
+              )}
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card title="프로필 수정 내역">
+        <ProfileHistoryList entries={state.profileHistory} players={state.players} />
+      </Card>
+    </div>
   );
 }

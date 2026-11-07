@@ -329,3 +329,19 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
 .my-items { margin-top: 10px; }
 .my-profile { margin-top: 8px; }
 .my-profile summary, details summary.muted { cursor: pointer; }
+.chat-hidden { color: var(--muted); font-style: italic; }
+.chat-mod { min-height: 26px; padding: 0 8px; font-size: 12px; margin-left: 6px; }
+
+/* ===== v2: 관리자 5개 메뉴 + 하위 탭 + 빠른 제어 바 ===== */
+.sub-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.sub-tabs button {
+  white-space: nowrap; min-height: 38px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-family: inherit;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-weight: 600; font-size: 14px;
+}
+.sub-tabs button.on { color: var(--accent-2); border-color: var(--accent); background: #2a2414; }
+.quickbar {
+  position: sticky; top: 58px; z-index: 9; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+  padding: 8px 12px; margin-bottom: 12px; border-radius: 10px; background: rgba(26, 31, 43, 0.95); border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+}
+.quickbar-status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }

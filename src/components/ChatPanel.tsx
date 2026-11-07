@@ -12,7 +12,11 @@ type Row =
   | { kind: "chat"; key: string; at: string; msg: ChatMessage }
   | { kind: "system"; key: string; at: string; ev: BattleEvent };
 
-export function ChatPanel({ state, onSent, height = 420 }: { state: RoomState; onSent: () => void; height?: number }) {
+export function ChatPanel({ state, onSent, height = 420, moderate = false }: {
+  state: RoomState; onSent: () => void; height?: number;
+  /** 관리자 채팅 관리: 메시지 가리기/해제 버튼 표시 */
+  moderate?: boolean;
+}) {
   const { all: chat, hasMore, loadMore, busy: loadingOlder } = useOlder<ChatMessage>(state.room.id, "chat", state.chat, state.chatHasMore);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -84,7 +88,15 @@ export function ChatPanel({ state, onSent, height = 420 }: { state: RoomState; o
           r.kind === "chat" ? (
             <div key={r.key} className={`chat-msg ${r.msg.is_mine ? "chat-mine" : ""} ${r.msg.sender_role === "admin" ? "chat-admin" : ""}`}>
               <span className="time">[{formatTime(r.at)}]</span>{" "}
-              <b className="chat-nick">{r.msg.nickname}{r.msg.sender_role === "admin" ? " 👑" : ""}</b>: <span className="chat-text">{r.msg.message}</span>
+              <b className="chat-nick">{r.msg.nickname}{r.msg.sender_role === "admin" ? " 👑" : ""}</b>:{" "}
+              {r.msg.hidden ? (
+                <span className="chat-text chat-hidden">
+                  (관리자가 가린 메시지){moderate && r.msg.original ? <> — 원문: <s>{r.msg.original}</s></> : null}
+                </span>
+              ) : (
+                <span className="chat-text">{r.msg.message}</span>
+              )}
+              {moderate && <HideButton roomId={state.room.id} id={r.msg.id} hidden={Boolean(r.msg.hidden)} onDone={onSent} />}
             </div>
           ) : (
             <div key={r.key} className={`system-msg system-${r.ev.event_type}`}>
@@ -136,5 +148,27 @@ export function useUnread(state: RoomState | null, chatActive: boolean) {
   return (
     state.chat.filter((m) => m.id > seen.chat && !m.is_mine).length +
     state.events.filter((e) => e.id > seen.event).length
+  );
+}
+
+/** 관리자: 메시지 가리기 / 해제 */
+function HideButton({ roomId, id, hidden, onDone }: { roomId: string; id: number; hidden: boolean; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    if (!hidden && !confirm("이 메시지를 가릴까요? 참가자에게는 '(관리자가 가린 메시지)'로 보이고, 원문은 관리자만 볼 수 있습니다.")) return;
+    setBusy(true);
+    try {
+      await api(`/api/rooms/${roomId}/chat/${id}/hide`, { method: "POST", body: { hide: !hidden } });
+      onDone();
+    } catch (e) {
+      alert(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button className="btn btn-small btn-ghost chat-mod" disabled={busy} onClick={toggle}>
+      {hidden ? "해제" : "가리기"}
+    </button>
   );
 }

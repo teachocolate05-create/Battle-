@@ -105,7 +105,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000041
 select pg_temp.ok((select count(*) = 1 and bool_and(action_type = 'attack') from public.actions), '본인은 자기 행동만 조회');
 select pg_temp.ok((select count(*) = 2 from public.phase_submissions), '제출 여부(행동 종류 없음)는 모두 조회');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000004a1', false);
-select pg_temp.ok((select count(*) = 0 from public.actions), '관리자도 판정 전 행동 종류 조회 불가');
+select pg_temp.ok((select count(*) = 2 from public.actions), '관리자는 판정 전 행동 확인 가능 (v2 요청서 8-4)');
 reset role;
 
 -- 시간이 남았으면 cron 이 돌아도 판정 안 함

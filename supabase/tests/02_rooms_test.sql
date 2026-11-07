@@ -169,7 +169,7 @@ select pg_temp.ok((select count(*) = 1 from public.room_members), 'RLS: 강퇴�
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
 select pg_temp.ok((select count(*) = 2 from public.rooms), 'RLS: 관리자는 모든 방 조회');
 select pg_temp.ok((select count(*) = 2 from public.enemies), 'RLS: 관리자는 미등장 적군도 조회');
-select pg_temp.ok((select count(*) = 0 from public.actions), 'RLS: 관리자도 판정 전 행동 조회 불가');
+select pg_temp.ok((select count(*) = 2 from public.actions), 'RLS: 관리자는 판정 전 행동 조회 가능 (v2 요청서 8-4)');
 
 -- 로그인 안 한 사용자
 reset role;

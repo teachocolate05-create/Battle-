@@ -38,7 +38,7 @@ select pg_temp.ok((select s->'players'->1 ? 'min_attack' = false and s->'players
 select pg_temp.ok((select s::text not like '%user_id%' and s::text not like '%password_hash%' and s::text not like '%$2a$%' from G), '사용자 ID·비밀번호 정보 없음');
 select pg_temp.ok((select s->>'viewer' = 'admin' and jsonb_array_length(s->'enemies') = 2 and jsonb_array_length(s->'members') = 3 from AD),
   '관리자: 미등장 적군·강퇴자 포함');
-select pg_temp.ok((select s->'myAction' = 'null'::jsonb and s::text not like '%"escape"%' and s::text not like '%"attack"%' from AD),
-  '관리자: 판정 전 행동 종류 없음');
+select pg_temp.ok((select s->'myAction' = 'null'::jsonb and jsonb_array_length(s->'adminActions') = 2 from AD),
+  '관리자: 판정 전 행동 목록 확인 가능 (v2 요청서 8-4)');
 select pg_temp.ok((select public.get_room_state('00000000-0000-0000-0000-000000000053', (select room_id from S))->>'error' = 'kicked'), '강퇴자 거부');
 select pg_temp.ok((select public.get_room_state('00000000-0000-0000-0000-000000000051', gen_random_uuid())->>'error' = 'not_found'), '없는 방');
