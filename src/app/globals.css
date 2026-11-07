@@ -310,3 +310,22 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
 /* 작은 화면: 그리드 안의 긴 내용이 화면 밖으로 밀어내지 않도록 */
 .card, .list-item, .stack { min-width: 0; }
 .list-item .grow { min-width: 0; overflow-wrap: anywhere; }
+
+/* ===== v2: 프로필 / 이름 색상 ===== */
+.name-tag { font-weight: 700; }
+.name-admin { color: var(--accent-2); }
+.color-palette { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+}
+.swatch-on { outline: 3px solid #fff; outline-offset: 2px; }
+.swatch-custom { background: var(--panel-2); font-size: 16px; }
+.swatch-custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; }
+.color-preview { padding: 8px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.profile-view { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 6px 0 0; }
+.profile-view dt { color: var(--muted); font-size: 0.85rem; }
+.profile-view dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.my-items { margin-top: 10px; }
+.my-profile { margin-top: 8px; }
+.my-profile summary, details summary.muted { cursor: pointer; }

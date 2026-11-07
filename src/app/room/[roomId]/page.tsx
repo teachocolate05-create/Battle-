@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, errorMessage } from "@/lib/apiClient";
 import { useRoomState } from "@/lib/useRoomState";
-import type { FullPlayer, RoomState } from "@/lib/types";
-import { PLAYER_STATUS_LABEL } from "@/lib/types";
-import { Card, ErrorBox, HpBar, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
-import { AppearanceBanner, EnemyCards, MyInventory, SystemEventList } from "@/components/BattleView";
+import type { RoomState } from "@/lib/types";
+import { Card, ErrorBox, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
+import { AppearanceBanner, EnemyCards } from "@/components/BattleView";
+import { MyCharacter } from "@/components/MyCharacter";
 import { ActionPanel, IncomingAttacks, needsMyAction, PhaseHeader, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
 import { BattleLogView } from "@/components/BattleLogView";
 import { ChatPanel, useUnread } from "@/components/ChatPanel";
@@ -90,37 +90,27 @@ export default function GuestRoomPage({ params }: { params: Promise<{ roomId: st
   );
 }
 
+/**
+ * 전투 탭: 위 — 내 캐릭터 / 가운데 — 행동 선택(+대상 적군·다가오는 공격·전장 현황) / 아래 — 전투 로그
+ * (일반 채팅은 표시하지 않음)
+ */
 function BattleTab({ state, remaining, onDone }: { state: RoomState; remaining: number | null; onDone: () => void }) {
-  const me = state.me?.player as FullPlayer | null | undefined;
   return (
-    <div className="grid-2">
-      <div className="stack">
-        <IncomingAttacks state={state} />
-        {state.viewer === "guest" && <ActionPanel state={state} remaining={remaining} onDone={onDone} />}
-        {me && (
-          <Card title={`내 캐릭터 · ${me.display_name}`}>
-            <HpBar current={me.current_hp} max={me.max_hp} />
-            <div className="stat-grid">
-              <div className="stat"><span>공격력</span><b>{me.min_attack} ~ {me.max_attack}</b></div>
-              <div className="stat"><span>상태</span><b>{PLAYER_STATUS_LABEL[me.status]}</b></div>
-              <div className="stat"><span>회피 성공률</span><b>{me.dodge_rate}%</b></div>
-              <div className="stat"><span>도주 성공률</span><b>{me.escape_rate}%</b></div>
-            </div>
-            <p className="small muted" style={{ marginTop: 8 }}>능력치는 관리자만 수정할 수 있습니다.</p>
-          </Card>
-        )}
-        <MyInventory state={state} />
+    <div className="stack battle-tab">
+      <MyCharacter state={state} onChanged={onDone} />
+      <div className="grid-2">
+        <div className="stack">
+          <IncomingAttacks state={state} />
+          {state.viewer === "guest" && <ActionPanel state={state} remaining={remaining} onDone={onDone} />}
+        </div>
+        <div className="stack">
+          <EnemyCards enemies={state.enemies} />
+          <PlayerList state={state} />
+        </div>
       </div>
-      <div className="stack">
-        <EnemyCards enemies={state.enemies} />
-        <PlayerList state={state} />
-        <Card title="전투 로그">
-          <BattleLogView state={state} />
-        </Card>
-        <Card title="시스템 메시지">
-          <SystemEventList events={state.events} />
-        </Card>
-      </div>
+      <Card title="전투 로그">
+        <BattleLogView state={state} />
+      </Card>
     </div>
   );
 }

@@ -22,6 +22,8 @@ export interface Room {
   end_reason: string | null;
   archive_status: "none" | "pending" | "saved" | "failed";
   created_at: string;
+  /** 관리자가 정한 추가 프로필 항목 */
+  profile_fields: ProfileField[];
 }
 
 export interface Member {
@@ -42,6 +44,27 @@ export interface PublicPlayer {
   max_hp: number;
   current_hp: number;
   status: PlayerStatus;
+  /** 이름 색상 (#rrggbb) — 채팅·로그·목록 등 이름이 나오는 모든 곳에 사용 */
+  name_color: string;
+  bio: string;
+  appearance: string;
+  /** 관리자가 정한 추가 항목 값 { 항목키: 값 } */
+  profile_extra: Record<string, string>;
+  /** 전투 시작 시 프로필 확정 시각 (이후 본인 수정 불가) */
+  profile_locked_at: string | null;
+}
+
+export interface ProfileField {
+  key: string;
+  label: string;
+}
+
+export interface ProfileHistoryEntry {
+  id: number;
+  player_id: string;
+  changed_by: "player" | "admin";
+  changes: Record<string, { before: unknown; after: unknown }>;
+  created_at: string;
 }
 
 /** 본인 또는 관리자에게만 보이는 전체 능력치 */
@@ -126,6 +149,15 @@ export interface MyAction {
   status: "submitted" | "resolved" | "invalid";
 }
 
+/** 관리자만 보는 판정 전 행동 */
+export interface AdminAction {
+  player_id: string;
+  action_type: ActionType;
+  target_id: string | null;
+  item_id: string | null;
+  submitted_at: string;
+}
+
 /** 적군 턴에 선언되어 다음 플레이어 반응턴에 적용될 공격 (공개 정보) */
 export interface PendingAttack {
   id: string;
@@ -189,6 +221,10 @@ export interface RoomState {
   /** 지금 반응해야 할, 선언된 적군 공격 */
   pendingAttacks: PendingAttack[];
   logs: BattleLog[];
+  /** 관리자 전용: 판정 전 제출된 행동 목록 */
+  adminActions: AdminAction[];
+  /** 관리자 전용: 프로필 수정 내역 */
+  profileHistory: ProfileHistoryEntry[];
   /** 최근 채팅 (전투 데이터와 별도 테이블·별도 조회) */
   chat: ChatMessage[];
   chatHasMore: boolean;
@@ -339,3 +375,30 @@ export interface ArchiveDetail {
   created_at: string;
   archive_data: ArchiveData;
 }
+
+/** 이름 색상 기본 목록 (DB 의 name_color_palette 와 같음) */
+export const NAME_COLOR_PALETTE = [
+  "#ff8a80", "#ffb74d", "#ffd54f", "#dce775", "#81c784", "#4dd0e1",
+  "#64b5f6", "#9fa8da", "#ce93d8", "#f48fb1", "#bcaaa4", "#e0e0e0",
+];
+
+function luminance(hex: string) {
+  return [0, 1, 2]
+    .map((i) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+}
+
+/** 어두운 카드 배경(#222838) 위에서 읽을 수 있는 색인지 (서버와 같은 기준: 명암비 4.5 이상) */
+export function isReadableNameColor(hex: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return false;
+  return (luminance(hex.toLowerCase()) + 0.05) / (luminance("#222838") + 0.05) >= 4.5;
+}
+
+export const PROFILE_FIELD_LABEL: Record<string, string> = {
+  display_name: "캐릭터 이름",
+  bio: "캐릭터 소개",
+  appearance: "외형 설명",
+  name_color: "이름 색상",
+  profile_extra: "추가 항목",
+};

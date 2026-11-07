@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/lib/apiClient";
 import type { ActionType, FullPlayer, PublicPlayer, RoomState } from "@/lib/types";
 import { ACTION_LABEL, ITEM_TYPE_LABEL, phaseName, PLAYER_STATUS_LABEL, RESULT_LABEL } from "@/lib/types";
 import { Card, ErrorBox, formatTime, HpBar } from "@/components/ui";
+import { NameTag, ProfileView } from "@/components/Profile";
 
 // ---------------------------------------------------------------------
 // 타이머 (서버 시각 기준) + 0초가 되면 서버에 판정 요청
@@ -115,17 +116,19 @@ export function PlayerList({ state }: { state: RoomState }) {
         {state.players.map((p) => {
           const s = submissionLabel(state, p);
           return (
-            <li key={p.id} className="list-item">
-              <div className="grow">
-                <div className="row">
-                  <b>{p.display_name}</b>
-                  {p.id === meId && <span className="badge">나</span>}
-                  <span className={`badge sub-${s.cls}`}>{s.text}</span>
-                </div>
-                <div style={{ marginTop: 6 }}>
-                  <HpBar current={p.current_hp} max={p.max_hp} compact />
-                </div>
+            <li key={p.id} className="list-item" style={{ display: "block" }}>
+              <div className="row">
+                <NameTag name={p.display_name} color={p.name_color} />
+                {p.id === meId && <span className="badge">나</span>}
+                <span className={`badge sub-${s.cls}`}>{s.text}</span>
               </div>
+              <div style={{ marginTop: 6 }}>
+                <HpBar current={p.current_hp} max={p.max_hp} compact />
+              </div>
+              <details className="small" style={{ marginTop: 4 }}>
+                <summary className="muted">프로필 보기</summary>
+                <ProfileView player={p} fields={state.room.profile_fields ?? []} />
+              </details>
             </li>
           );
         })}
