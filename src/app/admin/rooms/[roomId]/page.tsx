@@ -12,7 +12,7 @@ import { MEMBER_STATUS_LABEL, PLAYER_STATUS_LABEL } from "@/lib/types";
 import { EnemiesPanel, FirstSidePanel, GrantPanel, ItemsPanel, PlayerStatsPanel, ProfilesPanel } from "@/components/admin/SetupPanels";
 import { BattleProgress, BattleStartEnd, QuickBar } from "@/components/admin/BattleControl";
 import { AppearanceBanner } from "@/components/BattleView";
-import { ArchiveStatus, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { ArchiveStatus, phaseTarget, useAutoTick, useRemaining } from "@/components/BattlePanels";
 import { BattleLogView } from "@/components/BattleLogView";
 import { ChatPanel } from "@/components/ChatPanel";
 import { NameTag, ProfileFieldsEditor } from "@/components/Profile";
@@ -30,7 +30,7 @@ type MenuKey = (typeof MENUS)[number]["key"];
 export default function AdminRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const { state, error, realtime, refresh, clockOffset } = useRoomState(roomId);
-  const remaining = useRemaining(state?.phase?.status === "open" ? state.phase.ends_at : null, clockOffset);
+  const remaining = useRemaining(phaseTarget(state), clockOffset);
   useAutoTick(state, remaining, refresh);
   const [menu, setMenu] = useState<MenuKey>("room");
   const [subs, setSubs] = useState<Record<string, string>>({});

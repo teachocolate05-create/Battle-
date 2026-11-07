@@ -29,19 +29,19 @@ export function useAutoTick(state: RoomState | null, remaining: number | null, r
   const phase = state?.phase;
   const due =
     state?.room.status === "in_progress" &&
-    phase?.status === "open" &&
-    (phase.acting_side === "enemies" || remaining === 0);
+    ((phase?.status === "open" && (phase.acting_side === "enemies" || remaining === 0)) ||
+      (phase?.status === "declared" && remaining === 0));
   useEffect(() => {
     if (!due || !state) return;
     const fire = () => {
-      if (Date.now() - last.current < 4000) return;
+      if (Date.now() - last.current < 1500) return;
       last.current = Date.now();
       api(`/api/rooms/${state.room.id}/battle/tick`, { method: "POST" })
         .catch(() => {})
         .finally(refresh);
     };
     fire();
-    const t = setInterval(fire, 4000);
+    const t = setInterval(fire, 2000);
     return () => clearInterval(t);
   }, [due, state, refresh]);
 }
@@ -54,6 +54,15 @@ function mmss(sec: number | null) {
 // ---------------------------------------------------------------------
 // 상단 진행 상태
 // ---------------------------------------------------------------------
+/** 지금 기다리는 시각: 행동 제출 마감(open) 또는 결과 공개(declared) */
+export function phaseTarget(state: RoomState | null) {
+  const ph = state?.phase;
+  if (!ph || state?.room.status !== "in_progress") return null;
+  if (ph.status === "open") return ph.ends_at;
+  if (ph.status === "declared") return ph.reveal_at;
+  return null;
+}
+
 export function PhaseHeader({ state, remaining }: { state: RoomState; remaining: number | null }) {
   const { room, phase } = state;
   const alivePlayers = state.players.filter((p) => p.status === "alive").length;
@@ -61,6 +70,7 @@ export function PhaseHeader({ state, remaining }: { state: RoomState; remaining:
   const waiting = room.status === "waiting";
   const ended = room.status === "ended";
   const playersTurn = phase?.status === "open" && phase.acting_side === "players";
+  const revealing = room.status === "in_progress" && phase?.status === "declared";
   const urgent = playersTurn && remaining !== null && remaining <= 30;
   return (
     <div className="battle-header">
@@ -71,9 +81,9 @@ export function PhaseHeader({ state, remaining }: { state: RoomState; remaining:
           {waiting ? "전투 대기 중" : ended ? "전투 종료" : phase ? `${phase.phase_number}단계 · ${phaseName(room.first_side, phase.phase_number)}` : "-"}
         </b>
       </div>
-      <div className={`stat timer ${urgent ? "timer-urgent" : ""}`}>
-        <span>{playersTurn ? "남은 시간 (플레이어 행동)" : ended || waiting ? "남은 시간" : "적군 행동 중"}</span>
-        <b>{playersTurn ? mmss(remaining) : "--:--"}</b>
+      <div className={`stat timer ${urgent ? "timer-urgent" : ""} ${revealing ? "timer-reveal" : ""}`}>
+        <span>{playersTurn ? "남은 시간 (플레이어 행동)" : revealing ? "⏳ 결과 공개까지" : ended || waiting ? "남은 시간" : "적군 행동 중"}</span>
+        <b>{playersTurn ? mmss(remaining) : revealing ? `${remaining ?? 5}초` : "--:--"}</b>
       </div>
       <div className="stat">
         <span>생존 플레이어 / 적군</span>
@@ -146,7 +156,8 @@ export function IncomingAttacks({ state }: { state: RoomState }) {
   return (
     <Card title="⚠ 다가오는 적군의 공격">
       <p className="small muted" style={{ marginBottom: 8 }}>
-        이번 반응턴 판정 때 적용됩니다. <b>회피</b>를 고르면 회피 판정을, <b>도망</b>에 성공하면 공격을 피할 수 있습니다.
+        이번 반응턴이 끝나고 결과가 공개될 때 적용됩니다. 공격력은 결과 공개 때 정해집니다.
+        <b>회피</b>를 고르면 회피 판정을, <b>도망</b>에 성공하면 공격을 피할 수 있습니다.
       </p>
       <ul className="list">
         {state.pendingAttacks.map((a) => {
@@ -158,7 +169,7 @@ export function IncomingAttacks({ state }: { state: RoomState }) {
                 <b>{enemy?.name ?? "?"}</b> → <b>{target?.display_name ?? "?"}</b>
                 {a.target_player_id === meId && <span className="badge sub-dead" style={{ marginLeft: 6 }}>나를 노림</span>}
               </span>
-              <span className="badge">공격력 {a.attack_power}</span>
+              <span className="badge">공격 예고</span>
             </li>
           );
         })}
@@ -212,9 +223,10 @@ export function ActionPanel({ state, remaining, onDone }: { state: RoomState; re
   else if (state.room.status === "ended") disabledReason = "전투가 종료되었습니다.";
   else if (me.status === "dead") disabledReason = "쓰러져서 행동할 수 없습니다.";
   else if (me.status === "escaped") disabledReason = "전투에서 이탈했습니다.";
+  else if (state.phase?.status === "declared") disabledReason = "행동 선언이 공개되었습니다. 잠시 후 판정 결과가 공개됩니다.";
   else if (!playersTurn) disabledReason = "적군이 행동하는 단계입니다. 잠시 기다리세요.";
   else if (remaining === 0) disabledReason = "제한 시간이 끝났습니다. 판정을 기다리는 중…";
-  else if (state.myAction) disabledReason = "이번 단계 행동을 제출했습니다. 제한 시간이 끝나면 판정됩니다.";
+  else if (state.myAction) disabledReason = "이번 단계 행동을 제출했습니다. 제한 시간이 끝나면 행동이 공개되고, 5초 뒤 결과가 공개됩니다.";
   const canAct = !disabledReason;
 
   const submit = async () => {
@@ -289,7 +301,7 @@ export function ActionPanel({ state, remaining, onDone }: { state: RoomState; re
       {canAct && type && (
         <p className="small muted" style={{ marginTop: 8 }}>
           {type === "attack" && `공격력 ${me.min_attack}~${me.max_attack} 무작위. 적군의 회피·방어력이 적용됩니다.`}
-          {type === "dodge" && `회피 성공률 ${me.dodge_rate}%. 성공하면 이번 교환(턴+반응턴)에서 받는 적군 공격 피해를 무효화합니다.`}
+          {type === "dodge" && `회피 성공률 ${me.dodge_rate}%. 성공하면 이번 구간(턴+반응턴)에서 받는 적군 공격 피해를 무효화합니다.`}
           {type === "item" && "아이템 사용은 행동 1회를 소모합니다."}
           {type === "escape" && `도주 성공률 ${me.escape_rate}%. 성공하면 전투에서 이탈하며 이후 행동할 수 없습니다.`}
         </p>

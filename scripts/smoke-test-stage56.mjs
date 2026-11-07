@@ -21,6 +21,16 @@ function ok(cond, name) {
   passed++;
   console.log(`✅ ${name}`);
 }
+/** 결과 공개(행동 선언 5초 뒤)를 기다림 — 서버 예약 작업이 처리 */
+async function waitReveal(u, R) {
+  for (let i = 0; i < 40; i++) {
+    const s = (await u.call(`${R}/state`)).data;
+    if (s.phase?.status !== "declared") return s;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("결과 공개가 15초 안에 되지 않았습니다");
+}
+
 async function makeUser() {
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -104,6 +114,7 @@ try {
 
   // ---------- 5단계: 단계별 로그 ----------
   await admin.call(`${R}/battle/resolve`, "POST");
+  await waitReveal(admin, R);
   s2 = await st(g1);
   const byPhase = (n) => s2.logs.filter((l) => l.cycle_number === 1 && l.phase_number === n && l.log_type !== "phase_started");
   ok(byPhase(1).length > 0 && byPhase(2).length > 0 && byPhase(3).length > 0, "1~3단계 로그가 단계 번호와 함께 따로 기록 (화면에서 2개씩 묶음 표시)");

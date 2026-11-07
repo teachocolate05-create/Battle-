@@ -9,14 +9,14 @@ import type { RoomState } from "@/lib/types";
 import { Card, ErrorBox, RealtimeDot, StatusBadge, Tabs } from "@/components/ui";
 import { AppearanceBanner, EnemyCards } from "@/components/BattleView";
 import { MyCharacter } from "@/components/MyCharacter";
-import { ActionPanel, IncomingAttacks, needsMyAction, PhaseHeader, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
+import { ActionPanel, IncomingAttacks, needsMyAction, PhaseHeader, phaseTarget, PlayerList, ResultBanner, useAutoTick, useRemaining } from "@/components/BattlePanels";
 import { BattleLogView } from "@/components/BattleLogView";
 import { ChatPanel, useUnread } from "@/components/ChatPanel";
 
 export default function GuestRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const { state, error, realtime, clockOffset, refresh } = useRoomState(roomId);
-  const remaining = useRemaining(state?.phase?.status === "open" ? state.phase.ends_at : null, clockOffset);
+  const remaining = useRemaining(phaseTarget(state), clockOffset);
   useAutoTick(state, remaining, refresh);
   const [tab, setTab] = useState("battle");
   const unread = useUnread(state, tab === "chat");

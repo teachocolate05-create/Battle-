@@ -24,6 +24,16 @@ function ok(cond, name) {
   passed++;
   console.log(`✅ ${name}`);
 }
+/** 결과 공개(행동 선언 5초 뒤)를 기다림 — 서버 예약 작업이 처리 */
+async function waitReveal(u, R) {
+  for (let i = 0; i < 40; i++) {
+    const s = (await u.call(`${R}/state`)).data;
+    if (s.phase?.status !== "declared") return s;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("결과 공개가 15초 안에 되지 않았습니다");
+}
+
 async function makeUser() {
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -85,20 +95,25 @@ try {
 
   // 조기 판정 → 1(플레이어) 2(적 반응) 3(적 후공) 판정, 4단계 열림
   ok((await g1.call(`${R}/battle/resolve`, "POST")).status === 403, "게스트는 조기 판정 불가");
-  ok((await admin.call(`${R}/battle/resolve`, "POST")).status === 200, "관리자 조기 판정");
+  ok((await admin.call(`${R}/battle/resolve`, "POST")).status === 200, "관리자 조기 판정 (행동 조기 마감)");
+  const decl = (await st(g1));
+  ok(decl.phase.status === "declared" && decl.players.every((p) => p.current_hp === 100) && !decl.logs.some((l) => l.stage === "result"),
+    "행동 선언만 공개, 결과 공개 전에는 HP 변화·결과 없음");
+  await waitReveal(admin, R);
   s = await st(g1);
   const hp = (n) => s.players.find((p) => p.display_name === n)?.current_hp ?? s.enemies.find((e) => e.name === n)?.current_hp;
   ok(s.phase.phase_number === 4 && s.phase.acting_side === "players" && s.phase.phase_type === "reaction", "4단계 플레이어 반응턴으로 진행");
   ok(hp("허수아비") === 22, "공격 10 - 방어력 2 = 8 피해 → 허수아비 22");
   ok(hp("기사") === 97 && hp("도적") === 97, "적 반응턴 반격 3 (도적 회피 0% 실패)");
   ok(s.pendingAttacks.length === 2, "적 후공턴 공격 선언 2건이 반응턴 화면에 표시");
-  ok(s.logs.some((l) => l.content.includes("기사가 허수아비를 공격했다! (공격력 10)")) && s.logs.some((l) => l.content.includes("도적이 회피 태세")),
-    "판정 후 모든 참가자에게 행동 종류·결과 공개");
+  ok(s.logs.some((l) => l.content === "기사가 허수아비를 공격했다.") && s.logs.some((l) => l.content.includes("기사의 공격 적중! (공격력 10")) && s.logs.some((l) => l.content === "도적이 회피를 시도했다."),
+    "행동 선언 → 5초 뒤 결과(공격력·피해) 공개");
   ok(!s.enemies.some((e) => e.name === "숨은 적"), "미등장 적군은 전투 중에도 게스트에게 비공개");
   ok((await g1.call(`${R}/actions`, "POST", { action_type: "dodge" })).status === 200, "기사: 반응턴 회피 제출");
 
   if (SKIP_WAIT) {
     await admin.call(`${R}/battle/resolve`, "POST");
+    await waitReveal(admin, R);
   } else {
     // 서버 예약 작업만으로 판정되는지 확인 (이 스크립트는 tick 요청을 보내지 않음)
     const ends = new Date(s.phase.ends_at).getTime() - new Date(s.serverNow).getTime();

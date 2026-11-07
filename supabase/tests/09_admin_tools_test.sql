@@ -18,6 +18,14 @@ begin
   raise notice 'ok  - %', p_name;
 end $$;
 
+-- 결과 공개 시각을 지난 것으로 만들고 예약 작업 실행 (실제로는 5초 뒤 자동)
+create or replace function pg_temp.reveal(p_room uuid) returns int language plpgsql as $$
+begin
+  update public.battle_phases set reveal_at = now() - interval '1 second'
+   where id = (select current_phase_id from public.rooms where id = p_room) and status = 'declared';
+  return public.battle_tick();
+end $$;
+
 insert into auth.users (id) values ('00000000-0000-0000-0000-0000000009a1'),
   ('00000000-0000-0000-0000-000000000091'), ('00000000-0000-0000-0000-000000000092');
 select public.register_admin('00000000-0000-0000-0000-0000000009a1');
@@ -70,6 +78,7 @@ select public.admin_withdraw_enemy((select adm from T), (select room_id from T),
 
 -- 약골 처치 → 남은 적군은 퇴장 상태뿐 → 승리
 select public.admin_resolve_now((select adm from T), (select room_id from T));
+select pg_temp.reveal((select room_id from T));
 select pg_temp.ok((select result = 'victory' from public.rooms where id = (select room_id from T)), '쓰러뜨린 적 + 퇴장한 적만 남으면 승리');
 
 -- 채팅 가리기

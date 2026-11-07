@@ -20,6 +20,14 @@ begin
   raise notice 'ok  - %', p_name;
 end $$;
 
+-- 결과 공개 시각을 지난 것으로 만들고 예약 작업 실행 (실제로는 5초 뒤 자동)
+create or replace function pg_temp.reveal(p_room uuid) returns int language plpgsql as $$
+begin
+  update public.battle_phases set reveal_at = now() - interval '1 second'
+   where id = (select current_phase_id from public.rooms where id = p_room) and status = 'declared';
+  return public.battle_tick();
+end $$;
+
 insert into auth.users (id) values ('00000000-0000-0000-0000-0000000007a1'),
   ('00000000-0000-0000-0000-000000000071'), ('00000000-0000-0000-0000-000000000072');
 select public.register_admin('00000000-0000-0000-0000-0000000007a1');
@@ -44,9 +52,11 @@ select public.submit_action('00000000-0000-0000-0000-000000000071', (select room
   json_build_object('action_type','item','item_id',(select id from heal))::jsonb);
 select public.send_chat('00000000-0000-0000-0000-000000000071', (select room_id from V), '약초 먹을게');
 select public.admin_resolve_now('00000000-0000-0000-0000-0000000007a1', (select room_id from V));
+select pg_temp.reveal((select room_id from V));
 select public.submit_action('00000000-0000-0000-0000-000000000071', (select room_id from V),
   json_build_object('action_type','attack','target_id',(select id from public.enemies where name = '슬라임'))::jsonb);
 select public.admin_resolve_now('00000000-0000-0000-0000-0000000007a1', (select room_id from V));
+select pg_temp.reveal((select room_id from V));
 
 select pg_temp.ok((select status = 'ended' and result = 'victory' and archive_status = 'saved' from public.rooms where id = (select room_id from V)),
   '승리 → 관리자 조작 없이 자동 저장 (saved)');

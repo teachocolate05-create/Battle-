@@ -182,6 +182,7 @@ export function QuickBar({ state, remaining, onChanged, goto }: {
       <div className="quickbar-status">
         <b>{status}</b>
         {early && <span className="badge sub-pending">⏱ {mmss(remaining)} · 제출 {submitted}/{alive}</span>}
+        {room.status === "in_progress" && phase?.status === "declared" && <span className="badge sub-submitted">⏳ 결과 공개까지 {remaining ?? 5}초</span>}
       </div>
       <div className="row">
         {room.status === "waiting" && <button className="btn btn-small btn-primary" onClick={() => goto("room", "battle")}>⚔ 전투 시작하러 가기</button>}

@@ -306,7 +306,7 @@ function hasBatchim(word: string) {
   const c = ch.charCodeAt(0);
   if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28 !== 0;
   if (/[0-9]/.test(ch)) return "013678".includes(ch);
-  if (/[a-z]/i.test(ch)) return "lmnr".includes(ch.toLowerCase());
+  if (/[a-z]/i.test(ch)) return "lmnbp".includes(ch.toLowerCase());
   return false;
 }
 

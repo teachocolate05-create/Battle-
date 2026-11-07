@@ -345,3 +345,11 @@ details.log-cycle[open] > summary::before { content: "▾ "; }
   backdrop-filter: blur(6px);
 }
 .quickbar-status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
+
+/* ===== v2: 행동 선언 → 판정 결과 ===== */
+.stage-title { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em; color: var(--muted); margin: 6px 0 2px; }
+.log-stage-declare { color: #d7dbe6; }
+.result-block { margin-top: 8px; padding: 6px 8px; border-radius: 8px; background: #1b1610; border: 1px solid #4a3a1c; }
+.result-block .stage-title { color: var(--accent-2); }
+.reveal-wait { margin-top: 8px; padding: 8px; border-radius: 8px; text-align: center; color: var(--accent-2); border: 1px dashed var(--accent); animation: blink 1.2s steps(2) infinite; }
+.timer-reveal b { color: var(--accent-2); }

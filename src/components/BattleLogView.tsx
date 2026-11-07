@@ -1,13 +1,14 @@
 "use client";
-// 5단계: 전투 로그를 사이클 → [턴 + 반응턴] 묶음 → 단계 순서로 보여줍니다.
-// (서버는 4개 단계를 각각 판정·기록하고, 화면에서만 2개씩 묶어서 표시)
-import { useEffect, useMemo, useRef, useState } from "react";
+// 전투 로그: 사이클 → [턴 + 반응턴] 구간 → ① 행동 선언(단계별) ② 판정 결과(5초 뒤 공개)
+// (서버는 단계마다 선언·결과를 따로 기록하고, 화면에서 구간 단위로 묶어서 표시)
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useColorizer } from "@/components/Profile";
 import { api, errorMessage } from "@/lib/apiClient";
 import type { BattleLog, HistoryPage, RoomState, Side } from "@/lib/types";
 import { phaseName } from "@/lib/types";
 import { formatTime } from "@/components/ui";
 
-interface PhaseGroup { n: number; startedAt: string | null; logs: BattleLog[] }
+interface PhaseGroup { n: number; startedAt: string | null; logs: BattleLog[]; results: BattleLog[] }
 interface CycleGroup { n: number; phases: Map<number, PhaseGroup>; count: number }
 
 function group(logs: BattleLog[]) {
@@ -21,10 +22,11 @@ function group(logs: BattleLog[]) {
     let c = cycles.get(l.cycle_number);
     if (!c) cycles.set(l.cycle_number, (c = { n: l.cycle_number, phases: new Map(), count: 0 }));
     let p = c.phases.get(l.phase_number);
-    if (!p) c.phases.set(l.phase_number, (p = { n: l.phase_number, startedAt: null, logs: [] }));
+    if (!p) c.phases.set(l.phase_number, (p = { n: l.phase_number, startedAt: null, logs: [], results: [] }));
     if (l.log_type === "phase_started") p.startedAt = l.created_at;
+    else if (l.log_type === "reveal") continue;
     else {
-      p.logs.push(l);
+      (l.stage === "result" ? p.results : p.logs).push(l);
       c.count++;
     }
   }
@@ -82,6 +84,9 @@ export function useStickToBottom(dep: unknown) {
 export function BattleLogView({ state }: { state: RoomState }) {
   const { all, hasMore, loadMore, busy, error } = useOlder<BattleLog>(state.room.id, "logs", state.logs, state.logs.length >= 400);
   const { ref, onScroll } = useStickToBottom(all.length);
+  const colorize = useColorizer(state.players);
+  const ph = state.phase;
+  const waiting = state.room.status === "in_progress" && ph?.status === "declared" ? { cycle: ph.cycle_number, phase: ph.phase_number } : null;
   return (
     <div className="scroll-box log-view" ref={ref} onScroll={onScroll}>
       {hasMore && (
@@ -90,16 +95,23 @@ export function BattleLogView({ state }: { state: RoomState }) {
         </button>
       )}
       {error && <p className="small" style={{ color: "var(--danger)" }}>{error}</p>}
-      <LogTree logs={all} firstSide={state.room.first_side} />
+      <LogTree logs={all} firstSide={state.room.first_side} waiting={waiting} colorize={colorize} />
     </div>
   );
 }
 
 /** 로그 묶음 표시 (실시간 화면과 전투 기록 보관함에서 공통 사용) */
-export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[]; firstSide: Side | null; openAll?: boolean }) {
+export function LogTree({ logs, firstSide, openAll = false, waiting = null, colorize }: {
+  logs: BattleLog[]; firstSide: Side | null; openAll?: boolean;
+  /** 결과 공개를 기다리는 구간 (사이클, 2|4단계) — "결과 공개 대기 중" 표시 */
+  waiting?: { cycle: number; phase: number } | null;
+  /** 문장 속 캐릭터 이름에 색 입히기 */
+  colorize?: (text: string) => ReactNode;
+}) {
   const { prep, cycles } = useMemo(() => group(logs), [logs]);
   const latestCycle = cycles.length ? cycles[cycles.length - 1].n : null;
   const first = firstSide;
+  const line = (l: BattleLog) => <LogLine key={l.id} log={l} colorize={colorize} />;
   return (
     <>
       {logs.length === 0 && <p className="muted">아직 전투 기록이 없습니다.</p>}
@@ -107,7 +119,7 @@ export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[
       {prep.length > 0 && (
         <section className="log-cycle">
           <div className="log-cycle-title">전투 준비 / 시스템</div>
-          {prep.map((l) => <LogLine key={l.id} log={l} />)}
+          {prep.map(line)}
         </section>
       )}
 
@@ -120,9 +132,12 @@ export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[
             const pa = c.phases.get(a);
             const pb = c.phases.get(b);
             if (!pa && !pb) return null;
+            const results = [...(pa?.results ?? []), ...(pb?.results ?? [])].sort((x, y) => x.id - y.id);
+            const isWaiting = waiting?.cycle === c.n && waiting.phase === b;
             return (
               <div key={a} className="exchange">
                 <div className="exchange-title">[{phaseName(first, a)} + {phaseName(first, b)}]</div>
+                <div className="stage-title">① 행동 선언</div>
                 {[pa, pb].map((p) =>
                   p ? (
                     <div key={p.n} className="phase-block">
@@ -130,10 +145,17 @@ export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[
                         {p.n}단계 · {phaseName(first, p.n)}
                         {p.startedAt && <span className="time"> {formatTime(p.startedAt)}</span>}
                       </div>
-                      {p.logs.length === 0 && <div className="log muted">(기록 없음)</div>}
-                      {p.logs.map((l) => <LogLine key={l.id} log={l} />)}
+                      {p.logs.length === 0 && <div className="log muted">(진행 중…)</div>}
+                      {p.logs.map(line)}
                     </div>
                   ) : null,
+                )}
+                {isWaiting && <div className="reveal-wait">⏳ 잠시 후 판정 결과가 공개됩니다…</div>}
+                {results.length > 0 && (
+                  <div className="result-block">
+                    <div className="stage-title">② 판정 결과</div>
+                    {results.map(line)}
+                  </div>
                 )}
               </div>
             );
@@ -144,10 +166,10 @@ export function LogTree({ logs, firstSide, openAll = false }: { logs: BattleLog[
   );
 }
 
-function LogLine({ log }: { log: BattleLog }) {
+function LogLine({ log, colorize }: { log: BattleLog; colorize?: (text: string) => ReactNode }) {
   return (
-    <div className={`log log-${log.log_type}`}>
-      <span className="time">{formatTime(log.created_at)}</span> {log.content}
+    <div className={`log log-${log.log_type} log-stage-${log.stage ?? "info"}`}>
+      <span className="time">{formatTime(log.created_at)}</span> {colorize ? colorize(log.content) : log.content}
     </div>
   );
 }

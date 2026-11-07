@@ -21,6 +21,16 @@ function ok(cond, name) {
   passed++;
   console.log(`✅ ${name}`);
 }
+/** 결과 공개(행동 선언 5초 뒤)를 기다림 — 서버 예약 작업이 처리 */
+async function waitReveal(u, R) {
+  for (let i = 0; i < 40; i++) {
+    const s = (await u.call(`${R}/state`)).data;
+    if (s.phase?.status !== "declared") return s;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("결과 공개가 15초 안에 되지 않았습니다");
+}
+
 async function makeUser() {
   const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -59,8 +69,10 @@ await admin.call(`${R}/battle/start`, "POST");
 await g1.call(`${R}/actions`, "POST", { action_type: "item", item_id: herb });
 await g1.call(`${R}/chat`, "POST", { message: "약초 먹을게!" });
 await admin.call(`${R}/battle/resolve`, "POST");
+await waitReveal(admin, R);
 await g1.call(`${R}/actions`, "POST", { action_type: "attack", target_id: slime });
 await admin.call(`${R}/battle/resolve`, "POST");
+await waitReveal(admin, R);
 
 let s = (await admin.call(`${R}/state`)).data;
 ok(s.room.status === "in_progress", "적군이 남아 있으면(미등장 보스) 슬라임을 쓰러뜨려도 전투 계속");

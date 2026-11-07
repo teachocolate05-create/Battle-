@@ -136,7 +136,10 @@ export interface BattlePhase {
   started_at: string;
   ends_at: string | null;
   resolved_at: string | null;
-  status: "open" | "resolved" | "aborted";
+  /** open: 행동 받는 중 / declared: 행동 선언 공개됨(결과 대기) / resolved: 판정 완료 / aborted: 중단 */
+  status: "open" | "declared" | "resolved" | "aborted";
+  /** 구간의 결과 공개 시각 (서버 기준, 2·4단계에만) */
+  reveal_at: string | null;
 }
 
 export type ActionType = "attack" | "dodge" | "item" | "escape";
@@ -164,7 +167,8 @@ export interface PendingAttack {
   id: string;
   enemy_id: string;
   target_player_id: string;
-  attack_power: number;
+  /** 결과 공개 전에는 항상 null (판정 때 결정) */
+  attack_power: number | null;
 }
 
 export interface BattleLog {
@@ -180,6 +184,8 @@ export interface BattleLog {
   content: string;
   data: Record<string, unknown>;
   created_at: string;
+  /** declare: 행동 선언 / result: 판정 결과 / info: 그 외 진행 기록 */
+  stage: "declare" | "result" | "info";
 }
 
 export interface ChatMessage {
